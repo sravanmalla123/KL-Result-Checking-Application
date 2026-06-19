@@ -394,7 +394,10 @@ def evaluate_report_ml(filename: str, text: str, images: list, simulation_scenar
             summary = f"Google Gemini 1.5 Flash Evaluation: Report '{filename}' scored {score}/100 — {grade_label}. Academic structure verified. Vocabulary density (academic: {text_analysis['academic_density']:.2f}, casual: {text_analysis['household_density']:.2f}). Extracted images confirmed authentic."
             data_assessment = f"Gemini Verification: Scientific formatting verified. Images are relevant to the study. Score threshold: 60 = PASS."
         
-        remarks = f"Approved submission. The report satisfies key scientific parameters with solid vocabulary density (academic: {text_analysis['academic_density']:.2f}) and structural coherence. Keep up the good work."
+        if score >= 60:
+            remarks = f"Approved submission. The report satisfies key scientific parameters with solid vocabulary density (academic: {text_analysis['academic_density']:.2f}) and structural coherence. Keep up the good work."
+        else:
+            remarks = f"Submission failed. The academic structure or vocabulary density (academic: {text_analysis['academic_density']:.2f}) does not meet the pass threshold of 60 marks. Resubmission required with enhanced detail."
         
     return {
         "score": score,

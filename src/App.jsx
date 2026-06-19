@@ -970,7 +970,7 @@ ${(evaluationResult.images || []).map((img, idx) => `
                         </p>
                       </div>
 
-                      {activeResult.score < 60 ? (
+                      {activeResult.score === 0 ? (
                         <div 
                           style={{ 
                             marginTop: '16px',
@@ -983,6 +983,23 @@ ${(evaluationResult.images || []).map((img, idx) => `
                           }}
                         >
                           <h4 style={{ fontSize: '0.85rem', color: '#ffcdd2', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: '700' }}>Examiner Remarks (Violation Flagged)</h4>
+                          <p style={{ fontSize: '0.9rem', lineHeight: '1.5', color: '#ffffff', fontWeight: '500' }}>
+                            {activeResult.remarks || "No remarks provided."}
+                          </p>
+                        </div>
+                      ) : activeResult.score < 60 ? (
+                        <div 
+                          style={{ 
+                            marginTop: '16px',
+                            padding: '16px', 
+                            borderRadius: 'var(--radius-md)', 
+                            background: 'linear-gradient(135deg, #ff9800 0%, #f57c00 100%)',
+                            border: '1px solid #ffb74d',
+                            boxShadow: '0 4px 15px rgba(255, 152, 0, 0.25)',
+                            transition: 'all 0.3s ease'
+                          }}
+                        >
+                          <h4 style={{ fontSize: '0.85rem', color: '#ffe0b2', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: '700' }}>Examiner Remarks (Revision Required)</h4>
                           <p style={{ fontSize: '0.9rem', lineHeight: '1.5', color: '#ffffff', fontWeight: '500' }}>
                             {activeResult.remarks || "No remarks provided."}
                           </p>
