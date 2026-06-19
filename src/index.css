@@ -779,3 +779,222 @@ body {
   box-shadow: 0 0 10px rgba(75, 85, 99, 0.4);
 }
 
+/* Red Sidebar & White Main Content Overrides */
+:root {
+  --bg-deep: #ffffff;
+  --bg-surface: #ffffff;
+  --bg-surface-hover: #f1f5f9;
+  --border-color: #cbd5e1;
+  --border-focus: #e31837;
+  
+  --color-text-main: #0f172a;
+  --color-text-muted: #475569;
+  --color-text-dim: #94a3b8;
+  
+  --sidebar-bg: linear-gradient(185deg, #b71c1c 0%, #880e4f 100%);
+  --sidebar-border: rgba(255, 255, 255, 0.1);
+  --sidebar-text: #ffffff;
+  --sidebar-text-muted: rgba(255, 255, 255, 0.7);
+  --sidebar-nav-active-bg: rgba(255, 255, 255, 0.18);
+  --sidebar-nav-hover-bg: rgba(255, 255, 255, 0.08);
+
+  --shadow-sm: 0 1px 2px rgba(0,0,0,0.05);
+  --shadow-md: 0 4px 12px rgba(0,0,0,0.05);
+  --shadow-lg: 0 8px 30px rgba(0,0,0,0.08);
+  --shadow-glass: 0 4px 20px rgba(0, 0, 0, 0.04);
+  
+  color-scheme: light;
+}
+
+body {
+  background: #f8fafc !important;
+  color: var(--color-text-main) !important;
+}
+
+/* Sidebar red coloring */
+.sidebar {
+  background: var(--sidebar-bg) !important;
+  border-right: 1px solid var(--sidebar-border) !important;
+}
+
+.brand-logo {
+  background: #ffffff !important;
+  color: #b71c1c !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+}
+
+.brand-name {
+  color: #ffffff !important;
+  background: none !important;
+  -webkit-background-clip: unset !important;
+  -webkit-text-fill-color: initial !important;
+}
+
+.sidebar .nav-item {
+  color: var(--sidebar-text-muted) !important;
+}
+
+.sidebar .nav-item:hover {
+  color: #ffffff !important;
+  background: var(--sidebar-nav-hover-bg) !important;
+}
+
+.sidebar .nav-item.active {
+  background: var(--sidebar-nav-active-bg) !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+  color: #ffffff !important;
+}
+
+/* Sidebar Analytics Card style overrides */
+.sidebar .glass-panel {
+  background: rgba(255, 255, 255, 0.1) !important;
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+  box-shadow: none !important;
+}
+
+.sidebar .glass-panel h4,
+.sidebar .glass-panel span {
+  color: #ffffff !important;
+}
+
+/* Main Area Card and Elements style overrides */
+.glass-panel {
+  background: #ffffff !important;
+  border: 1px solid #e2e8f0 !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04) !important;
+}
+
+/* Override inline text white colors inside main content */
+.main-content h1,
+.main-content h2,
+.main-content h3,
+.main-content h4,
+.main-content p,
+.main-content span,
+.main-content strong,
+.main-content label {
+  color: var(--color-text-main) !important;
+}
+
+/* Exclude badges, scenario labels, and buttons from general main-content text color overrides */
+.main-content .btn,
+.main-content .btn span,
+.main-content .badge,
+.main-content .image-badge,
+.main-content .comparison-tab-btn,
+.main-content .engine-dot-badge,
+.main-content .history-score-badge {
+  color: inherit !important;
+}
+
+.main-content .btn-primary,
+.main-content .btn-primary span,
+.main-content .btn-danger,
+.main-content .btn-danger span {
+  color: #ffffff !important;
+}
+
+/* Input Fields styling */
+.form-input {
+  background: #ffffff !important;
+  border: 1px solid #cbd5e1 !important;
+  color: #0f172a !important;
+}
+
+.form-input::placeholder {
+  color: #94a3b8 !important;
+}
+
+.form-input:focus {
+  border-color: var(--color-primary) !important;
+  box-shadow: 0 0 0 3px rgba(227, 24, 55, 0.15) !important;
+}
+
+/* Select element option elements style */
+#engine-select {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+  border: 1px solid #cbd5e1 !important;
+}
+
+/* Document content preview area */
+.custom-scroll {
+  background: #0f172a !important;
+  color: #e2e8f0 !important;
+  border-color: #1e293b !important;
+}
+
+.custom-scroll span,
+.custom-scroll p {
+  color: #e2e8f0 !important;
+}
+
+/* Secondary Button styling */
+.btn-secondary {
+  background: #ffffff !important;
+  color: #0f172a !important;
+  border: 1px solid #cbd5e1 !important;
+}
+
+.btn-secondary:hover {
+  background: #f1f5f9 !important;
+  border-color: #94a3b8 !important;
+}
+
+/* Comparison tab button default styling */
+.comparison-tab-btn {
+  background: #ffffff !important;
+  color: #475569 !important;
+  border: 1px solid #cbd5e1 !important;
+}
+
+.comparison-tab-btn:hover {
+  background: #f1f5f9 !important;
+  color: #0f172a !important;
+}
+
+.comparison-tab-btn.active {
+  color: #ffffff !important;
+}
+
+/* Table overrides */
+.comparison-table th {
+  color: var(--color-text-muted) !important;
+  border-bottom: 1px solid #cbd5e1 !important;
+}
+
+.comparison-table td {
+  color: var(--color-text-main) !important;
+}
+
+.comparison-table tr:hover {
+  background: #f8fafc !important;
+}
+
+/* Scenario labels styling */
+.main-content label[style*="cursor"] {
+  background: #ffffff !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04) !important;
+}
+
+.main-content label[style*="cursor"] span {
+  color: var(--color-text-main) !important;
+}
+
+/* Upload area styling */
+.upload-container {
+  border-color: #cbd5e1 !important;
+  background: #ffffff !important;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.02) !important;
+}
+
+.upload-container:hover, .upload-container.drag-active {
+  border-color: var(--color-primary) !important;
+  background: rgba(227, 24, 55, 0.03) !important;
+}
+
+.upload-icon {
+  background: #f1f5f9 !important;
+  border-color: #cbd5e1 !important;
+}
+
