@@ -791,10 +791,10 @@ body {
   --color-text-muted: #475569;
   --color-text-dim: #94a3b8;
   
-  --sidebar-bg: linear-gradient(185deg, #b71c1c 0%, #880e4f 100%);
+  --sidebar-bg: linear-gradient(180deg, #e31837 0%, #a8001f 100%);
   --sidebar-border: rgba(255, 255, 255, 0.1);
   --sidebar-text: #ffffff;
-  --sidebar-text-muted: rgba(255, 255, 255, 0.7);
+  --sidebar-text-muted: rgba(255, 255, 255, 0.75);
   --sidebar-nav-active-bg: rgba(255, 255, 255, 0.18);
   --sidebar-nav-hover-bg: rgba(255, 255, 255, 0.08);
 
@@ -807,7 +807,7 @@ body {
 }
 
 body {
-  background: #f8fafc !important;
+  background: #ffffff !important;
   color: var(--color-text-main) !important;
 }
 
@@ -819,7 +819,7 @@ body {
 
 .brand-logo {
   background: #ffffff !important;
-  color: #b71c1c !important;
+  color: #e31837 !important;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
 }
 
@@ -979,6 +979,10 @@ body {
 
 .main-content label[style*="cursor"] span {
   color: var(--color-text-main) !important;
+}
+
+.main-content label[style*="cursor"][style*="var(--color-primary)"] {
+  background: rgba(227, 24, 55, 0.06) !important;
 }
 
 /* Upload area styling */
