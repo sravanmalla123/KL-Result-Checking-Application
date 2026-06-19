@@ -27,8 +27,10 @@ CRITICAL RULES FOR GRADING:
    If any image in the report is AI-generated (look for typical synthetic rendering signs: plastic skin textures, gibberish or deformed text inside diagrams, impossible geometric lines, perfect airbrushed highlights, typical style of Midjourney/DALL-E, or weird limb structures in people), you MUST set "isAI": true, "status": "flagged_ai", and the final "score": 0.
 2. Household / family images check:
    If any image is a household photo (look for faces in casual environments, selfies, family gatherings, home settings like kitchens, bedrooms, living rooms, gardens, domestic pets like dogs/cats, or personal/non-academic content) instead of authentic project/field experiment data, you MUST set "isHousehold": true, "status": "flagged_household", and the final "score": 0.
-3. Correct report data and images check:
-   If there are NO AI-generated images and NO household/family images, and the report data and images are correct, authentic, and relevant to the study (e.g. project charts, field data diagrams, professional graphics, scientific layouts), you should grade the report on a scale of 1 to 100 based on data quality, accuracy, completeness, and image relevance.
+3. AI-generated text check:
+   The use of AI-generated text in the report is FULLY ALLOWED and should NOT be penalized. If the student uses AI text, you should grade it purely on its data precision, structure, academic quality, and clarity. If it has good content and is clear, award a nice/high score.
+4. Correct report data and images check:
+   If there are NO AI-generated images and NO household/family images, grade the report on a scale of 1 to 100 based on text quality, data precision, academic worth, and image relevance.
    A score of 60 or above is a PASS. A score below 60 is a FAIL.
    GRACE BAND RULE: If you would award a score between 55 and 59 (inclusive), you MUST round it up to 60 so the student achieves a PASS. Scores of 54 and below remain unchanged (FAIL).
 
