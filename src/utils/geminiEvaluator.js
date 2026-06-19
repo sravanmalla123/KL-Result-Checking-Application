@@ -24,7 +24,7 @@ function base64ToPart(base64Url) {
  * @returns {Promise<any>}
  */
 async function evaluateWithGemini(text, images, apiKey) {
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=${apiKey}`;
 
   // Formulate the strict system prompt
   const systemPrompt = `You are an expert academic examiner and document authenticator.

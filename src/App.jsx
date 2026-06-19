@@ -646,7 +646,7 @@ ${(evaluationResult.images || []).map((img, idx) => `
                     }}
                     style={{ width: '100%', padding: '10px 14px', background: 'rgba(0,0,0,0.3)', color: '#fff', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)' }}
                   >
-                    <option value="gemini">Google Gemini 1.5 Flash</option>
+                    <option value="gemini">Google Gemini 3.5 Flash</option>
                     <option value="chatgpt">OpenAI ChatGPT-4o-mini</option>
                     <option value="claude">Anthropic Claude 3.5 Sonnet</option>
                     <option value="blackbox">Blackbox AI Multimodal</option>
@@ -730,7 +730,7 @@ ${(evaluationResult.images || []).map((img, idx) => `
                             const isHousehold = modelData.images?.some(img => img.isHousehold) ?? false;
                             
                             const modelNames = {
-                              gemini: "Google Gemini 1.5 Flash",
+                              gemini: "Google Gemini 3.5 Flash",
                               chatgpt: "OpenAI ChatGPT-4o-mini",
                               claude: "Anthropic Claude 3.5 Sonnet",
                               blackbox: "Blackbox AI Multimodal"

@@ -82,7 +82,7 @@ def evaluate_with_gemini_api(text: str, images: List[str], api_key: str) -> dict
     """
     Calls the Gemini API from Python using standard REST requests.
     """
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={api_key}"
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key={api_key}"
     
     parts = [{"text": f"{SYSTEM_PROMPT}\n\nDOCUMENT TEXT CONTENT:\n{text}\n\nBelow are the images extracted from the report. Each image is preceded by an index label. Please examine each image carefully and align your JSON indexes with these labels."}]
     

@@ -265,7 +265,7 @@ def evaluate_report_ml(filename: str, text: str, images: list, simulation_scenar
     
     # Engine specific prefixes to make simulations realistic
     engine_names = {
-        "gemini": "Google Gemini 1.5 Flash",
+        "gemini": "Google Gemini 3.5 Flash",
         "chatgpt": "OpenAI ChatGPT-4o-mini",
         "claude": "Anthropic Claude 3.5 Sonnet",
         "blackbox": "Blackbox AI Multimodal"
@@ -391,7 +391,7 @@ def evaluate_report_ml(filename: str, text: str, images: list, simulation_scenar
             summary = f"Blackbox AI Evaluation: Report '{filename}' scored {score}/100 — {grade_label}. Strong technical vocabulary. Diagrams conform to project directives. No commercial or synthetic art detected."
             data_assessment = f"Blackbox Verification: Layout and text parser validated. Score threshold: 60 = PASS."
         else:
-            summary = f"Google Gemini 1.5 Flash Evaluation: Report '{filename}' scored {score}/100 — {grade_label}. Academic structure verified. Vocabulary density (academic: {text_analysis['academic_density']:.2f}, casual: {text_analysis['household_density']:.2f}). Extracted images confirmed authentic."
+            summary = f"Google Gemini 3.5 Flash Evaluation: Report '{filename}' scored {score}/100 — {grade_label}. Academic structure verified. Vocabulary density (academic: {text_analysis['academic_density']:.2f}, casual: {text_analysis['household_density']:.2f}). Extracted images confirmed authentic."
             data_assessment = f"Gemini Verification: Scientific formatting verified. Images are relevant to the study. Score threshold: 60 = PASS."
         
         if score >= 60:
