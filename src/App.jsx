@@ -970,12 +970,41 @@ ${(evaluationResult.images || []).map((img, idx) => `
                         </p>
                       </div>
 
-                      <div>
-                        <h4 style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Examiner Remarks</h4>
-                        <p style={{ fontSize: '0.9rem', lineHeight: '1.45', color: '#fff' }}>
-                          {activeResult.remarks || "No remarks provided."}
-                        </p>
-                      </div>
+                      {activeResult.score < 60 ? (
+                        <div 
+                          style={{ 
+                            marginTop: '16px',
+                            padding: '16px', 
+                            borderRadius: 'var(--radius-md)', 
+                            background: 'linear-gradient(135deg, #d32f2f 0%, #b71c1c 100%)',
+                            border: '1px solid #ff1744',
+                            boxShadow: '0 4px 15px rgba(211, 47, 47, 0.25)',
+                            transition: 'all 0.3s ease'
+                          }}
+                        >
+                          <h4 style={{ fontSize: '0.85rem', color: '#ffcdd2', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: '700' }}>Examiner Remarks (Violation Flagged)</h4>
+                          <p style={{ fontSize: '0.9rem', lineHeight: '1.5', color: '#ffffff', fontWeight: '500' }}>
+                            {activeResult.remarks || "No remarks provided."}
+                          </p>
+                        </div>
+                      ) : (
+                        <div 
+                          style={{ 
+                            marginTop: '16px',
+                            padding: '16px', 
+                            borderRadius: 'var(--radius-md)', 
+                            background: 'linear-gradient(135deg, #ffffff 0%, #f5f5f5 100%)',
+                            border: '1px solid #e0e0e0',
+                            boxShadow: '0 4px 15px rgba(0, 0, 0, 0.1)',
+                            transition: 'all 0.3s ease'
+                          }}
+                        >
+                          <h4 style={{ fontSize: '0.85rem', color: 'var(--color-primary)', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: '700' }}>Examiner Remarks (Approved)</h4>
+                          <p style={{ fontSize: '0.9rem', lineHeight: '1.5', color: '#2d3748', fontWeight: '500' }}>
+                            {activeResult.remarks || "No remarks provided."}
+                          </p>
+                        </div>
+                      )}
                     </div>
 
                     {/* Narrative Playback (TTS) */}
