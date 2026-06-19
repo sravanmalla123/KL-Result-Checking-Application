@@ -425,13 +425,27 @@ ${(evaluationResult.images || []).map((img, idx) => `
   const totalFlagged = history.filter(item => item.evaluation.score === 0).length;
 
   return (
-    <div className="app-container">
-      {/* Sidebar Navigation */}
-      <aside className="sidebar">
-        <div className="brand-section">
-          <div className="brand-logo">V</div>
-          <div className="brand-name">VeriReport</div>
+    <div className="app-wrapper">
+      {/* Top Header Bar */}
+      <header className="top-header">
+        <div className="header-brand" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <div className="header-logo">V</div>
+          <span className="header-title">VeriReport</span>
         </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+          <span style={{ fontSize: '0.85rem', color: 'rgba(255, 255, 255, 0.85)', fontWeight: '500' }}>
+            Document AI Evaluator & Grader
+          </span>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '0.85rem', color: '#ffffff' }}>
+            <span style={{ display: 'inline-block', width: '8px', height: '8px', borderRadius: '50%', background: apiKey ? '#00e676' : '#ff9100' }}></span>
+            {apiKey ? 'API Connected' : 'Simulation Mode'}
+          </span>
+        </div>
+      </header>
+
+      <div className="app-container">
+        {/* Sidebar Navigation */}
+        <aside className="sidebar">
 
         <nav className="sidebar-nav">
           <button 
@@ -1409,6 +1423,13 @@ ${(evaluationResult.images || []).map((img, idx) => `
           </div>
         </div>
       )}
+      </div> {/* Close app-container */}
+
+      {/* Footer Bar */}
+      <footer className="app-footer">
+        <div>© 2026 VeriReport. All Rights Reserved.</div>
+        <div>AI Document Authenticator & Grader</div>
+      </footer>
     </div>
   );
 }
