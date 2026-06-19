@@ -120,7 +120,7 @@ def analyze_image_ml(img: Image.Image) -> dict:
         # to ensure it behaves deterministically if the user uploaded simulation files.
         # But we base it primarily on image statistics!
         
-        if avg_brightness_local_var < 0.003 and avg_saturation > 0.35:
+        if avg_brightness_local_var < 0.003 or (avg_brightness_local_var < 0.005 and avg_saturation > 0.25):
             is_ai = True
             status = "flagged_ai"
             assessment_details.append(f"Flagged AI: Detected synthetic color gradients and airbrushed highlights with extremely low noise patterns (entropy: {color_entropy:.2f}, noise index: {avg_brightness_local_var:.5f}).")
@@ -347,7 +347,12 @@ def evaluate_report_ml(filename: str, text: str, images: list, simulation_scenar
     text_analysis = analyze_text_nlp(text)
     
     # 3. Compile Score — out of 100 marks. PASS = 60+, FAIL = <60.
-    if has_ai:
+    if has_ai and has_household:
+        score = 0
+        summary = f"CRITICAL FAILURE — 0/100: The report '{filename}' was graded 0 marks by {engine_label}. Both AI-generated images and household/personal photographs were detected. FAIL."
+        data_assessment = f"[{engine_label} Compliance Alert] Dual violations triggered: Generative AI image detection and household imagery found. Score set to zero (FAIL)."
+        remarks = "Resubmission required. The submission contains multiple violations:\n1. AI-generated images are strictly prohibited.\n2. Private/household photos must be replaced with authentic technical diagrams or charts relevant to the study."
+    elif has_ai:
         score = 0
         summary = f"CRITICAL FAILURE — 0/100: The report '{filename}' was graded 0 marks by {engine_label}. An AI-generated image was detected. Academic guidelines strictly prohibit synthetic, generative visual submissions. FAIL."
         data_assessment = f"[{engine_label} Compliance Alert] Generative AI image detection triggered. Score set to zero (FAIL)."
