@@ -791,11 +791,11 @@ body {
   --color-text-muted: #475569;
   --color-text-dim: #94a3b8;
   
-  --sidebar-bg: linear-gradient(180deg, #e31837 0%, #a8001f 100%);
+  --sidebar-bg: linear-gradient(180deg, #8a0c1e 0%, #4a000b 100%);
   --sidebar-border: rgba(255, 255, 255, 0.1);
   --sidebar-text: #ffffff;
   --sidebar-text-muted: rgba(255, 255, 255, 0.75);
-  --sidebar-nav-active-bg: rgba(255, 255, 255, 0.18);
+  --sidebar-nav-active-bg: rgba(255, 255, 255, 0.15);
   --sidebar-nav-hover-bg: rgba(255, 255, 255, 0.08);
 
   --shadow-sm: 0 1px 2px rgba(0,0,0,0.05);
@@ -819,7 +819,7 @@ body {
 
 .brand-logo {
   background: #ffffff !important;
-  color: #e31837 !important;
+  color: #8a0c1e !important;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
 }
 
