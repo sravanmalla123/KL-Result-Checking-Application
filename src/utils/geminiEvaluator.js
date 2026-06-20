@@ -292,25 +292,46 @@ async function evaluateSimulation(filename, scenario, numImages, text = '') {
       remarks = `Resubmission required. Student must replace private/household photos with authentic technical diagrams or charts.`;
     }
   } else {
-    // Overall score out of 100 — valid reports always score 65–90 (clear PASS)
+    // Content-sensitive scoring — wide range so different reports score differently.
+    // Formula: word count (0–30) + image bonus (0–25) + section heuristic (0–20) = 0–75 base → scaled to 0–100
     const wordCount = text ? text.split(/\s+/).length : 0;
-    // Base: 65–80 from text length (even short reports pass)
-    const baseScore = 65 + Math.min(15, wordCount / 60);
-    // Image bonus: up to 15 extra points
-    const imageBonus = numImages > 0 ? Math.min(15, numImages * 5) : 3;
-    score = Math.round(Math.min(100, baseScore + imageBonus));
+    const textLowerSim = (text || '').toLowerCase();
+
+    // Word count: <100=5, 100-300=12, 300-600=20, 600-1000=26, 1000+=30
+    let wcScore;
+    if (wordCount >= 1000) wcScore = 30;
+    else if (wordCount >= 600) wcScore = 26 + (wordCount - 600) / 400 * 4;
+    else if (wordCount >= 300) wcScore = 20 + (wordCount - 300) / 300 * 6;
+    else if (wordCount >= 100) wcScore = 12 + (wordCount - 100) / 200 * 8;
+    else wcScore = Math.max(0, wordCount / 100 * 12);
+
+    // Academic structure: look for key academic section keywords (0–25)
+    const sectionKws = ['abstract', 'introduction', 'methodology', 'results', 'conclusion', 'references'];
+    const foundSections = sectionKws.filter(kw => textLowerSim.includes(kw)).length;
+    const sectionScore = (foundSections / sectionKws.length) * 25;
+
+    // Academic vocabulary heuristic (0–20)
+    const acadKws = ['experiment', 'data', 'analysis', 'hypothesis', 'sample', 'observation', 'figure', 'table', 'chart', 'correlation', 'measurement', 'literature', 'citation', 'parameter', 'variable'];
+    const acadHits = acadKws.filter(kw => textLowerSim.includes(kw)).length;
+    const vocabScore = (acadHits / acadKws.length) * 20;
+
+    // Image bonus (0–15)
+    const imageBonus = numImages > 0 ? Math.min(15, numImages * 5) : 0;
+
+    score = Math.round(Math.min(100, wcScore + sectionScore + vocabScore + imageBonus));
+    score = Math.max(35, score); // floor=35 for valid reports; 0 is ONLY for AI/household violations
 
     // Grace band: 55–59 → 60 (PASS)
     if (score >= 55 && score <= 59) {
       score = 60;
     }
     const gradeLabel = score >= 60 ? "PASS" : "FAIL";
-    summary = `Report evaluation complete. Overall score: ${score}/100 — ${gradeLabel}.`;
+    summary = `Report evaluation complete. Overall score: ${score}/100 — ${gradeLabel}. Words: ${wordCount}, Sections found: ${foundSections}/6, Academic keywords: ${acadHits}/15.`;
     dataAssessment = `Verified Authentic: No AI-generated or household images detected. Text structure matches domain criteria.`;
     if (score >= 60) {
       remarks = `Approved submission. The report satisfies key scientific parameters with solid vocabulary density and structural coherence. Keep up the good work.`;
     } else {
-      remarks = `Submission failed. The academic structure or vocabulary density does not meet the pass threshold of 60 marks. Resubmission required.`;
+      remarks = `Submission failed (Score: ${score}/100). The report needs more academic content, proper sections (Abstract, Introduction, Methodology, Results, Conclusion, References), and adequate word count to pass the 60-mark threshold.`;
     }
   }
 

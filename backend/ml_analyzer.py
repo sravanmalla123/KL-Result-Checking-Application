@@ -411,16 +411,34 @@ def evaluate_report_ml(filename: str, text: str, images: list, simulation_scenar
             data_assessment = f"[{engine_label} Compliance Alert] Household imagery found in place of research charts. Score set to zero (FAIL)."
             remarks = "Resubmission required. Student must replace private/household photos with authentic technical diagrams or charts relevant to the study."
     else:
-        # Overall score out of 100 — no 50/50 split.
-        # Valid reports always start from a strong base (60–75) so authentic work passes.
-        # Text quality lifts the score; image quality adds a bonus.
-        struct = text_analysis["structure_score"]
-        density = min(text_analysis["academic_density"] * 5.0, 1.0)
-        # Base: 62 – 77  (ensures even minimal valid text scores pass)
-        raw_text = 62.0 + (10.0 * struct) + (8.0 * density)
-        raw_text = max(62.0, min(77.0, raw_text))
+        # Overall score out of 100 — content-sensitive, wide range so reports differ meaningfully.
+        # Poor reports can fail; good reports clearly pass.
+        struct = text_analysis["structure_score"]          # 0.0–1.0 (sections found)
+        density = text_analysis["academic_density"]        # TF-IDF academic keyword score (0–~0.5)
+        word_count = len(text.split()) if text else 0
 
-        # Image quality contributes up to 23 bonus points
+        # --- Word count component (0–30 pts) ---
+        # <100 words = 5, 100–300 = 10, 300–600 = 18, 600–1000 = 24, 1000+ = 30
+        if word_count >= 1000:
+            wc_score = 30.0
+        elif word_count >= 600:
+            wc_score = 24.0 + (word_count - 600) / 400 * 6.0
+        elif word_count >= 300:
+            wc_score = 18.0 + (word_count - 300) / 300 * 6.0
+        elif word_count >= 100:
+            wc_score = 10.0 + (word_count - 100) / 200 * 8.0
+        else:
+            wc_score = max(0.0, word_count / 100 * 10.0)
+
+        # --- Structure component (0–30 pts) ---
+        # Each academic section found adds points; 6/6 sections = 30 pts
+        struct_score = struct * 30.0
+
+        # --- Academic vocabulary component (0–25 pts) ---
+        # TF-IDF density capped at 0.3 → 25 pts
+        vocab_score = min(density / 0.3, 1.0) * 25.0
+
+        # --- Image quality bonus (0–15 pts) ---
         if len(images) > 0:
             edge_densities = []
             for idx, img_b64 in enumerate(images):
@@ -429,15 +447,15 @@ def evaluate_report_ml(filename: str, text: str, images: list, simulation_scenar
                     analysis = analyze_image_ml(img)
                     edge_densities.append(analysis["metrics"]["edge_density"])
                 except:
-                    edge_densities.append(15.0)
+                    edge_densities.append(10.0)
             avg_edge_density = sum(edge_densities) / len(edge_densities)
-            # Map edge density (5–25) → 8–23 bonus
-            image_bonus = 8.0 + max(0.0, min(15.0, avg_edge_density - 5.0))
+            # Map edge density 5–25 → 5–15 pts
+            image_bonus = 5.0 + max(0.0, min(10.0, (avg_edge_density - 5.0) * 0.5))
         else:
-            image_bonus = 8.0  # No images: small base bonus
+            image_bonus = 0.0  # No images: no bonus
 
-        score = round(raw_text + image_bonus)
-        score = max(0, min(100, score))
+        score = round(wc_score + struct_score + vocab_score + image_bonus)
+        score = max(35, min(100, score))   # floor=35 for valid reports; 0 is ONLY for AI/household
 
         # Grace band: 55–59 → 60 (PASS)
         if 55 <= score <= 59:
@@ -445,28 +463,28 @@ def evaluate_report_ml(filename: str, text: str, images: list, simulation_scenar
 
         ai_tool_keywords = ['chatgpt', 'gemini', 'copilot', 'openai', 'anthropic', 'claude', 'llm', 'ai platform', 'ai tool']
         uses_ai_tools = any(kw in text.lower() for kw in ai_tool_keywords)
-        belongs_to_domain = text_analysis["structure_score"] >= 0.6 or text_analysis["academic_density"] >= 0.15
 
         grade_label = "PASS" if score >= 60 else "FAIL"
 
         # Engine-specific summaries
         if engine == "claude":
-            summary = f"Anthropic Claude 3.5 Sonnet Audit: Overall Score {score}/100 — {grade_label}. Academic structure: {text_analysis['structure_score']*100:.0f}%."
+            summary = f"Anthropic Claude 3.5 Sonnet Audit: Overall Score {score}/100 — {grade_label}. Academic structure: {text_analysis['structure_score']*100:.0f}%, Academic density: {density:.3f}, Word count: {word_count}."
             data_assessment = f"Claude Data Insight: Checked structure and content. No AI/household image violations. Score threshold: 60 = PASS."
         elif engine == "chatgpt":
-            summary = f"OpenAI ChatGPT-4o-mini Evaluation: Overall Score {score}/100 — {grade_label}. Academic density: {text_analysis['academic_density']:.2f}."
+            summary = f"OpenAI ChatGPT-4o-mini Evaluation: Overall Score {score}/100 — {grade_label}. Academic density: {density:.3f}, Sections found: {len(text_analysis['found_sections'])}/6."
             data_assessment = f"ChatGPT Verification: Image checks completed. Text verification validated. Score threshold: 60 = PASS."
         elif engine == "blackbox":
-            summary = f"Blackbox AI Evaluation: Overall Score {score}/100 — {grade_label}. Valid report structure."
+            summary = f"Blackbox AI Evaluation: Overall Score {score}/100 — {grade_label}. Word count: {word_count}, Sections: {len(text_analysis['found_sections'])}/6."
             data_assessment = f"Blackbox Verification: Format checks passed. Images authentic. Score threshold: 60 = PASS."
         else:
-            summary = f"Google Gemini 3.5 Flash Evaluation: Overall Score {score}/100 — {grade_label}. Extracted images confirmed authentic."
+            summary = f"Google Gemini 3.5 Flash Evaluation: Overall Score {score}/100 — {grade_label}. Word count: {word_count}, Sections: {len(text_analysis['found_sections'])}/6, Academic density: {density:.3f}."
             data_assessment = f"Gemini Verification: Scientific formatting verified. Images are relevant. Score threshold: 60 = PASS."
 
         if score >= 60:
             remarks = f"Approved submission. The report satisfies key scientific parameters with solid vocabulary density and structural coherence. Keep up the good work."
         else:
-            remarks = f"Submission failed. The academic structure or vocabulary density does not meet the pass threshold of 60 marks. Resubmission required."
+            remarks = f"Submission failed (Score: {score}/100). The report needs more academic content, proper sections (Abstract, Introduction, Methodology, Results, Conclusion, References), and adequate word count to pass. Minimum pass mark is 60/100."
+
         
     return {
         "score": score,
