@@ -102,11 +102,11 @@ def analyze_image_ml(img: Image.Image) -> dict:
     is_household = False
     
     # Let's assess features
-    if color_entropy < 3.0:
-        # High likelihood of a simple chart, schematic, or line drawing
+    if color_entropy < 3.0 or edge_density > 6.0:
+        # High likelihood of a simple chart, schematic, line drawing, or high-contrast colored diagram
         is_diagram = True
         status = "valid"
-        assessment_details.append(f"Image has low color complexity (entropy: {color_entropy:.2f}) and sharp contrast, matching academic chart profiles.")
+        assessment_details.append(f"Validated Diagram: Image has low color complexity (entropy: {color_entropy:.2f}) or high edge contrast (density: {edge_density:.2f}%), matching academic diagram profiles.")
     else:
         is_photo = True
         # If it is a photo, let's distinguish between natural household photo and AI-generated image
@@ -282,21 +282,16 @@ def evaluate_report_ml(filename: str, text: str, images: list, simulation_scenar
             
             # For exact scenario emulation (e.g. if the user wants to test specific simulation routes),
             # we can inject/force the status if it matches active_scenario for the first image.
-            if active_scenario == "ai" and idx == 0:
+            if (detected_scenario == "ai" or simulation_scenario == "ai") and idx == 0:
                 analysis["status"] = "flagged_ai"
                 analysis["isAI"] = True
                 analysis["isHousehold"] = False
                 analysis["assessment"] = f"[{engine_label} Simulation] Flagged AI: detected synthetic rendering artifacts and distorted diagram line geometry."
-            elif active_scenario == "household" and idx == 0:
+            elif (detected_scenario == "household" or simulation_scenario == "household") and idx == 0:
                 analysis["status"] = "flagged_household"
                 analysis["isAI"] = False
                 analysis["isHousehold"] = True
                 analysis["assessment"] = f"[{engine_label} Simulation] Flagged Household: identified domestic setting, human faces, or residential pets instead of field experiment layout."
-            elif active_scenario == "valid":
-                analysis["status"] = "valid"
-                analysis["isAI"] = False
-                analysis["isHousehold"] = False
-                analysis["assessment"] = f"[{engine_label} Simulation] Validated: authentic scientific diagram with clear plotting scales and text headers."
             
             if analysis["isAI"]:
                 has_ai = True
