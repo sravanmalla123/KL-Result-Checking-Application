@@ -249,16 +249,17 @@ def evaluate_report_ml(filename: str, text: str, images: list, simulation_scenar
     has_ai = False
     has_household = False
     
-    # Let's check keywords in filename/text to override ML classification for exact deterministic testing of scenarios
+    # Let's check keywords in filename ONLY to override ML classification for exact deterministic testing of scenarios
+    # (Checking body text is disabled to allow students to discuss AI platforms/tools without penalty)
     detected_scenario = None
-    content_lower = f"{filename} {text}".lower()
+    filename_lower = filename.lower()
     
-    ai_keywords = ['ai-generated', 'synthetic image', 'midjourney', 'dall-e', 'stable-diffusion', 'copilot image']
-    household_keywords = ['family', 'selfie', 'household', 'kitchen', 'bedroom', 'living room', 'my dog', 'my cat']
+    ai_keywords = ['ai-generated', 'synthetic image', 'midjourney', 'dall-e', 'stable-diffusion', 'copilot image', 'ai-scenario', 'flagged_ai']
+    household_keywords = ['family', 'selfie', 'household', 'kitchen', 'bedroom', 'living room', 'my dog', 'my cat', 'flagged_household']
     
-    if any(k in content_lower for k in ai_keywords):
+    if any(k in filename_lower for k in ai_keywords):
         detected_scenario = "ai"
-    elif any(k in content_lower for k in household_keywords):
+    elif any(k in filename_lower for k in household_keywords):
         detected_scenario = "household"
         
     active_scenario = detected_scenario or simulation_scenario
@@ -342,67 +343,86 @@ def evaluate_report_ml(filename: str, text: str, images: list, simulation_scenar
                 "assessment": f"[{engine_label} Simulation] Flagged Household: domestic photo detected in place of field-data chart (no raw image submitted — scenario override active).",
                 "status": "flagged_household"
             })
-            
     # 2. Evaluate text NLP
     text_analysis = analyze_text_nlp(text)
     
-    # 3. Compile Score — out of 100 marks. PASS = 60+, FAIL = <60.
-    if has_ai and has_household:
+    # 3. Compile Score — out of 100 marks (Images: 50, Text: 50). PASS = 60+, FAIL = <60.
+    if has_ai or has_household:
         score = 0
-        summary = f"CRITICAL FAILURE — 0/100: The report '{filename}' was graded 0 marks by {engine_label}. Both AI-generated images and household/personal photographs were detected. FAIL."
-        data_assessment = f"[{engine_label} Compliance Alert] Dual violations triggered: Generative AI image detection and household imagery found. Score set to zero (FAIL)."
-        remarks = "Resubmission required. The submission contains multiple violations:\n1. AI-generated images are strictly prohibited.\n2. Private/household photos must be replaced with authentic technical diagrams or charts relevant to the study."
-    elif has_ai:
-        score = 0
-        summary = f"CRITICAL FAILURE — 0/100: The report '{filename}' was graded 0 marks by {engine_label}. An AI-generated image was detected. Academic guidelines strictly prohibit synthetic, generative visual submissions. FAIL."
-        data_assessment = f"[{engine_label} Compliance Alert] Generative AI image detection triggered. Score set to zero (FAIL)."
-        remarks = "Resubmission required. Student must submit authentic experiment images. Generative AI tools are strictly prohibited."
-    elif has_household:
-        score = 0
-        summary = f"CRITICAL FAILURE — 0/100: The report '{filename}' was graded 0 marks by {engine_label}. A household/personal photograph was found instead of professional field-data charts. FAIL."
-        data_assessment = f"[{engine_label} Compliance Alert] Household imagery found in place of research charts. Score set to zero (FAIL)."
-        remarks = "Resubmission required. Student must replace private/household photos with authentic technical diagrams or charts relevant to the study."
+        image_score = 0
+        text_score = 0
+        if has_ai and has_household:
+            summary = f"CRITICAL FAILURE — 0/100: The report '{filename}' was graded 0 marks by {engine_label}. Both AI-generated images and household/personal photographs were detected. FAIL."
+            data_assessment = f"[{engine_label} Compliance Alert] Dual violations triggered: Generative AI image detection and household imagery found. Score set to zero (FAIL)."
+            remarks = "Resubmission required. The submission contains multiple violations:\n1. AI-generated images are strictly prohibited.\n2. Private/household photos must be replaced with authentic technical diagrams or charts relevant to the study."
+        elif has_ai:
+            summary = f"CRITICAL FAILURE — 0/100: The report '{filename}' was graded 0 marks by {engine_label}. An AI-generated image was detected. Academic guidelines strictly prohibit synthetic, generative visual submissions. FAIL."
+            data_assessment = f"[{engine_label} Compliance Alert] Generative AI image detection triggered. Score set to zero (FAIL)."
+            remarks = "Resubmission required. Student must submit authentic experiment images. Generative AI tools are strictly prohibited."
+        else:
+            summary = f"CRITICAL FAILURE — 0/100: The report '{filename}' was graded 0 marks by {engine_label}. A household/personal photograph was found instead of professional field-data charts. FAIL."
+            data_assessment = f"[{engine_label} Compliance Alert] Household imagery found in place of research charts. Score set to zero (FAIL)."
+            remarks = "Resubmission required. Student must replace private/household photos with authentic technical diagrams or charts relevant to the study."
     else:
-        # Map NLP analysis (0-1 range) to 0-100 scale:
-        # - structure_score contributes up to 40 points
-        # - academic_density contributes up to 40 points
-        # - base 20 points for any submitted report
-        nlp_score = 20 + (40 * text_analysis["structure_score"]) + (40 * min(text_analysis["academic_density"] * 3.0, 1.0))
+        # Evaluate Images portion (out of 50 marks)
+        # "if they are not using ai images and not household images means it want to give 30 to 50 marks"
+        if len(images) > 0:
+            edge_densities = []
+            for idx, img_b64 in enumerate(images):
+                try:
+                    img = decode_base64_image(img_b64)
+                    analysis = analyze_image_ml(img)
+                    edge_densities.append(analysis["metrics"]["edge_density"])
+                except:
+                    edge_densities.append(15.0)
+            avg_edge_density = sum(edge_densities) / len(edge_densities)
+            # Map average edge density (typically 5 to 25) to 30 to 50 range
+            image_score = 30.0 + (avg_edge_density - 5.0)
+            image_score = max(30.0, min(50.0, image_score))
+        else:
+            # If no images, they are not using AI or household images, default to 30 marks
+            image_score = 30.0
+
+        # Evaluate Text portion (out of 50 marks)
+        # Raw text NLP score (goes from 10.0 to 50.0)
+        raw_text_score = 10.0 + (20.0 * text_analysis["structure_score"]) + (20.0 * min(text_analysis["academic_density"] * 3.0, 1.0))
         
-        # Per-engine slight scoring variance to make comparison realistic:
-        # Claude is strict, Gemini is generous, ChatGPT is standard, Blackbox is balanced
-        variance = 0
-        if engine == "claude":
-            variance = -6
-        elif engine == "gemini":
-            variance = 4
-        elif engine == "blackbox":
-            variance = -2
+        # Map raw_text_score (10.0 - 50.0) to 30 to 50 range (never below 30 marks)
+        text_score = 30.0 + (raw_text_score - 10.0) * 0.5
+        text_score = max(30.0, min(50.0, text_score))
+        
+        ai_tool_keywords = ['chatgpt', 'gemini', 'copilot', 'openai', 'anthropic', 'claude', 'llm', 'ai platform', 'ai tool', 'ai-generated', 'synthetic text']
+        uses_ai_tools = any(kw in text.lower() for kw in ai_tool_keywords)
+        belongs_to_domain = text_analysis["structure_score"] >= 0.6 or text_analysis["academic_density"] >= 0.15
             
-        score = round(max(1, min(100, nlp_score + variance)))
+        score = round(image_score + text_score)
         # Grace band: scores between 55-59 are bumped to 60 (PASS)
         if 55 <= score <= 59:
             score = 60
+            
         grade_label = "PASS" if score >= 60 else "FAIL"
         
         # Engine-specific summaries
         if engine == "claude":
-            summary = f"Anthropic Claude 3.5 Sonnet Report Audit: The document '{filename}' scored {score}/100 — {grade_label}. Evaluated {len(text_analysis['found_sections'])} academic headers: {', '.join(text_analysis['found_sections'])}. Academic keyword density: {text_analysis['academic_density']:.2f}. Images are authentic."
-            data_assessment = f"Claude Data Insight: Academic structure is coherent. No synthetic gradients or household references detected. Score threshold: 60 = PASS."
+            summary = f"Anthropic Claude 3.5 Sonnet Audit: Score {score}/100 — {grade_label}. Images portion: {image_score:.1f}/50, Text portion: {text_score:.1f}/50. Academic structure: {text_analysis['structure_score']*100:.0f}%."
+            data_assessment = f"Claude Data Insight: Checked structure and content. No AI/household image violations. Score threshold: 60 = PASS."
         elif engine == "chatgpt":
-            summary = f"OpenAI ChatGPT-4o-mini Evaluation: Report '{filename}' scored {score}/100 — {grade_label}. Academic structure intact. TF-IDF keyword density: {text_analysis['academic_density']:.2f}. Visually authentic graphics confirmed."
-            data_assessment = f"ChatGPT Verification: Structural completeness at {round(text_analysis['structure_score'] * 100)}%. Score threshold: 60 = PASS."
+            summary = f"OpenAI ChatGPT-4o-mini Evaluation: Score {score}/100 — {grade_label}. Images portion: {image_score:.1f}/50, Text portion: {text_score:.1f}/50. Academic density: {text_analysis['academic_density']:.2f}."
+            data_assessment = f"ChatGPT Verification: Image checks completed. Text verification validated. Score threshold: 60 = PASS."
         elif engine == "blackbox":
-            summary = f"Blackbox AI Evaluation: Report '{filename}' scored {score}/100 — {grade_label}. Strong technical vocabulary. Diagrams conform to project directives. No commercial or synthetic art detected."
-            data_assessment = f"Blackbox Verification: Layout and text parser validated. Score threshold: 60 = PASS."
+            summary = f"Blackbox AI Evaluation: Score {score}/100 — {grade_label}. Images portion: {image_score:.1f}/50, Text portion: {text_score:.1f}/50. Valid report structure."
+            data_assessment = f"Blackbox Verification: Format checks passed. Images authentic. Score threshold: 60 = PASS."
         else:
-            summary = f"Google Gemini 3.5 Flash Evaluation: Report '{filename}' scored {score}/100 — {grade_label}. Academic structure verified. Vocabulary density (academic: {text_analysis['academic_density']:.2f}, casual: {text_analysis['household_density']:.2f}). Extracted images confirmed authentic."
-            data_assessment = f"Gemini Verification: Scientific formatting verified. Images are relevant to the study. Score threshold: 60 = PASS."
+            summary = f"Google Gemini 3.5 Flash Evaluation: Score {score}/100 — {grade_label}. Images portion: {image_score:.1f}/50, Text portion: {text_score:.1f}/50. Extracted images confirmed authentic."
+            data_assessment = f"Gemini Verification: Scientific formatting verified. Images are relevant. Score threshold: 60 = PASS."
         
         if score >= 60:
-            remarks = f"Approved submission. The report satisfies key scientific parameters with solid vocabulary density (academic: {text_analysis['academic_density']:.2f}) and structural coherence. Keep up the good work."
+            remarks = f"Approved submission. The report satisfies key scientific parameters with solid vocabulary density and structural coherence. Keep up the good work."
         else:
-            remarks = f"Submission failed. The academic structure or vocabulary density (academic: {text_analysis['academic_density']:.2f}) does not meet the pass threshold of 60 marks. Resubmission required with enhanced detail."
+            if uses_ai_tools and belongs_to_domain:
+                remarks = f"Submission failed. AI tools/platforms usage was detected in the text. While the content is relevant to the domain (giving {text_score:.1f}/50 for text), the total grade is {score}/100 (FAIL)."
+            else:
+                remarks = f"Submission failed. The academic structure or vocabulary density does not meet the pass threshold of 60 marks. Resubmission required."
         
     return {
         "score": score,

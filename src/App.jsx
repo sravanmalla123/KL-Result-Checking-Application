@@ -337,7 +337,7 @@ Report: ${parsedData.filename}
 Evaluation Date: ${new Date().toLocaleDateString()}
 ------------------------------------------------\n`;
 
-    if (evaluationResult.engine === 'compare') {
+    if (evaluationResult.comparison) {
       content += `MULTI-ENGINE AI ASSESSMENT REPORT\n`;
       ['gemini', 'chatgpt', 'claude', 'blackbox'].forEach(model => {
         const modelData = evaluationResult.comparison?.[model] || {};
@@ -398,8 +398,8 @@ ${(evaluationResult.images || []).map((img, idx) => `
     URL.revokeObjectURL(url);
   };
 
-  const activeResult = evaluationResult && (evaluationResult.engine === 'compare' 
-    ? (evaluationResult.comparison?.[selectedComparisonTab] || {}) 
+  const activeResult = evaluationResult && (evaluationResult.comparison 
+    ? (evaluationResult.comparison[selectedComparisonTab] || {}) 
     : evaluationResult);
 
   // Circle stroke offset calculations (score out of 100)
@@ -420,9 +420,25 @@ ${(evaluationResult.images || []).map((img, idx) => `
   // Stats for sidebar
   const totalReports = history.length;
   const avgScore = totalReports > 0 
-    ? (history.reduce((acc, curr) => acc + curr.evaluation.score, 0) / totalReports).toFixed(0)
+    ? (history.reduce((acc, curr) => {
+        if (curr.evaluation.comparison) {
+          const geminiScore = curr.evaluation.comparison.gemini?.score;
+          if (geminiScore !== undefined) return acc + geminiScore;
+          const scores = Object.values(curr.evaluation.comparison).map(res => res.score ?? 0);
+          return acc + (scores.length > 0 ? Math.max(...scores) : 0);
+        }
+        return acc + (curr.evaluation.score ?? 0);
+      }, 0) / totalReports).toFixed(0)
     : '0';
-  const totalFlagged = history.filter(item => item.evaluation.score === 0).length;
+  const totalFlagged = history.filter(item => {
+    if (item.evaluation.comparison) {
+      const geminiScore = item.evaluation.comparison.gemini?.score;
+      if (geminiScore !== undefined) return geminiScore === 0;
+      const scores = Object.values(item.evaluation.comparison).map(res => res.score ?? 0);
+      return scores.length > 0 && Math.max(...scores) === 0;
+    }
+    return item.evaluation.score === 0;
+  }).length;
 
   return (
     <div className="app-wrapper">
@@ -695,7 +711,7 @@ ${(evaluationResult.images || []).map((img, idx) => `
             {parsedData && evaluationResult && (
               <div className="fade-in">
                 {/* Comparison Matrix (Full Width) */}
-                {evaluationResult.engine === 'compare' && (
+                {evaluationResult.comparison && (
                   <div className="glass-panel" style={{ padding: '24px', marginBottom: '24px' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '12px' }}>
                       <div>
@@ -923,7 +939,7 @@ ${(evaluationResult.images || []).map((img, idx) => `
                     {/* Grading score card */}
                     <div className="glass-panel score-hero">
                       <div style={{ marginBottom: '12px', fontSize: '0.8rem', color: 'var(--color-text-muted)', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                        {evaluationResult.engine === 'compare' ? `${selectedComparisonTab.toUpperCase()} Grading Score` : 'Evaluation Score'}
+                        {evaluationResult.comparison ? `${selectedComparisonTab.toUpperCase()} Grading Score` : 'Evaluation Score'}
                       </div>
                       <div className="score-circle-container">
                         <svg width="180" height="180">
@@ -967,7 +983,7 @@ ${(evaluationResult.images || []).map((img, idx) => `
                     {/* Summary & Assessment Feedback */}
                     <div className="glass-panel" style={{ padding: '24px', textAlign: 'left' }}>
                       <h3 style={{ fontFamily: 'var(--font-heading)', fontSize: '1.1rem', fontWeight: '600', marginBottom: '12px', color: 'var(--color-text-main)' }}>
-                        AI Grade Log ({(evaluationResult.engine === 'compare' ? selectedComparisonTab : (evaluationResult.engine || 'gemini')).toUpperCase()})
+                        AI Grade Log ({(evaluationResult.comparison ? selectedComparisonTab : (evaluationResult.engine || 'gemini')).toUpperCase()})
                       </h3>
                       
                       <div style={{ marginBottom: '18px' }}>
@@ -1177,7 +1193,24 @@ ${(evaluationResult.images || []).map((img, idx) => `
             ) : (
               <div className="history-section">
                 {filteredHistory.map((item) => {
-                  const hasViolation = item.evaluation.score === 0;
+                  let itemScore = item.evaluation.score;
+                  let isPass = itemScore >= 60;
+                  let hasViolation = itemScore === 0;
+
+                  if (item.evaluation.comparison) {
+                    const geminiRes = item.evaluation.comparison.gemini;
+                    if (geminiRes) {
+                      itemScore = geminiRes.score;
+                      isPass = itemScore >= 60;
+                      hasViolation = itemScore === 0;
+                    } else {
+                      const comparisonList = Object.values(item.evaluation.comparison);
+                      const scores = comparisonList.map(res => res.score ?? 0);
+                      itemScore = scores.length > 0 ? Math.max(...scores) : 0;
+                      isPass = comparisonList.some(res => (res.score ?? 0) >= 60);
+                      hasViolation = !isPass && itemScore === 0;
+                    }
+                  }
                   
                   return (
                     <div 
@@ -1203,9 +1236,9 @@ ${(evaluationResult.images || []).map((img, idx) => `
                       </div>
 
                       <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                        <div className={`history-score-badge ${hasViolation ? 'flagged' : (item.evaluation.score >= 60 ? 'valid' : 'warn')}`}>
-                          {item.evaluation.score} / 100
-                          <span style={{ fontSize: '0.7rem', marginLeft: '6px', fontWeight: '700' }}>{item.evaluation.score >= 60 && item.evaluation.score > 0 ? 'PASS' : 'FAIL'}</span>
+                        <div className={`history-score-badge ${hasViolation ? 'flagged' : (isPass ? 'valid' : 'warn')}`}>
+                          {itemScore} / 100
+                          <span style={{ fontSize: '0.7rem', marginLeft: '6px', fontWeight: '700' }}>{isPass ? 'PASS' : 'FAIL'}</span>
                         </div>
 
                         <button 

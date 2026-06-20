@@ -31,21 +31,23 @@ async function evaluateWithGemini(text, images, apiKey) {
 Your job is to grade the uploaded student report out of 100 marks, checking both the textual data and the attached images.
 
 CRITICAL RULES FOR GRADING:
-1. AI-generated images check:
-   If any image in the report is AI-generated (look for typical synthetic rendering signs: plastic skin textures, gibberish or deformed text inside diagrams, impossible geometric lines, perfect airbrushed highlights, typical style of Midjourney/DALL-E, or weird limb structures in people), you MUST set "isAI": true, "status": "flagged_ai", and the final "score": 0.
-2. Household / family images check:
-   If any image is a household photo (look for faces in casual environments, selfies, family gatherings, home settings like kitchens, bedrooms, living rooms, gardens, domestic pets like dogs/cats, or personal/non-academic content) instead of authentic project/field experiment data, you MUST set "isHousehold": true, "status": "flagged_household", and the final "score": 0.
-3. AI-generated text check:
-   The use of AI-generated text in the report is FULLY ALLOWED and should NOT be penalized. If the student uses AI text, you should grade it purely on its data precision, structure, academic quality, and clarity. If it has good content and is clear, award a nice/high score.
-4. Correct report data and images check:
-   If there are NO AI-generated images and NO household/family images, grade the report on a scale of 1 to 100 based on text quality, data precision, academic worth, and image relevance.
-   A score of 60 or above is a PASS. A score below 60 is a FAIL.
-   GRACE BAND RULE: If you would award a score between 55 and 59 (inclusive), you MUST round it up to 60 so the student achieves a PASS. Scores of 54 and below remain unchanged (FAIL).
+1. Marks Breakdown (Total 100 marks):
+   - Images Score: Maximum 50 marks.
+   - Text Score: Maximum 50 marks.
+2. AI-generated and Household Images check (Images Score: 50 marks):
+   - If any image in the report is AI-generated (synthetic rendering, Midjourney, DALL-E, etc.) OR is a household photo (faces, selfies, pets, home context), you MUST flag the image status accordingly and set the final report "score" to 0 marks.
+   - If there are NO AI-generated images and NO household/family images (meaning they are authentic scientific diagrams or no images at all), you MUST award between 30 and 50 marks for the image portion.
+3. AI-generated Text check (Text Score: 50 marks):
+   - If the student utilizes AI text/tools (ChatGPT, Gemini, Claude, etc.) and the text is relevant and belongs to the scientific domain/topic of the report, you MUST award between 30 and 50 marks for the text portion.
+   - Otherwise, grade the text out of 50 marks based on academic structure, quality, and writing relevance.
+4. Final Score:
+   - The final score is the sum of the Images Score (out of 50) and the Text Score (out of 50). If any image is flagged as AI or Household, the final score must be 0.
+   - GRACE BAND RULE: If the final score is between 55 and 59 (inclusive), round it up to 60 (PASS).
 
 Your response MUST be a single, valid JSON object following this exact schema:
 {
   "score": number, // out of 100. MUST be 0 if any image is AI or household.
-  "summary": "Detailed overall summary explaining the grading and feedback...",
+  "summary": "Detailed overall summary explaining the grading breakdown (Images out of 50, Text out of 50) and feedback...",
   "dataAssessment": "Detailed verification of the data accuracy...",
   "remarks": "Overall examiner remarks, academic recommendations, or actionable next steps for the student...",
   "images": [
@@ -118,26 +120,28 @@ Ensure there are no markdown boxes (like \`\`\`json) surrounding the response, j
  * @returns {string|null} 'ai', 'household', or null
  */
 function autoDetectScenario(text, filename) {
-  const content = `${filename} ${text}`.toLowerCase();
+  // Let's check keywords in filename ONLY to override ML classification for exact deterministic testing of scenarios
+  // (Checking body text is disabled to allow students to discuss AI platforms/tools without penalty)
+  const filenameLower = filename.toLowerCase();
   
   // Keywords indicating AI images
   const aiKeywords = [
     'ai-generated', 'synthetic image', 'midjourney', 'dall-e', 'stable diffusion', 
-    'generated diagram', 'artificial rendering', 'copilot image', 'ai diagram'
+    'generated diagram', 'artificial rendering', 'copilot image', 'ai diagram', 'ai-scenario', 'flagged_ai'
   ];
   
   // Keywords indicating Household/Family images
   const householdKeywords = [
     'family', 'selfie', 'household', 'my home', 'my house', 'kitchen', 'bedroom', 
     'living room', 'mother', 'father', 'sister', 'brother', 'family member',
-    'my dog', 'my cat', 'pet photo', 'domestic scene'
+    'my dog', 'my cat', 'pet photo', 'domestic scene', 'flagged_household'
   ];
 
-  if (aiKeywords.some(keyword => content.includes(keyword))) {
+  if (aiKeywords.some(keyword => filenameLower.includes(keyword))) {
     return 'ai';
   }
   
-  if (householdKeywords.some(keyword => content.includes(keyword))) {
+  if (householdKeywords.some(keyword => filenameLower.includes(keyword))) {
     return 'household';
   }
 
@@ -149,9 +153,10 @@ function autoDetectScenario(text, filename) {
  * @param {string} filename 
  * @param {string} scenario 
  * @param {number} numImages 
+ * @param {string} text 
  * @returns {Promise<any>}
  */
-async function evaluateSimulation(filename, scenario, numImages) {
+async function evaluateSimulation(filename, scenario, numImages, text = '') {
   // Wait a short bit to simulate loading
   await new Promise(resolve => setTimeout(resolve, 2000));
 
@@ -186,21 +191,65 @@ async function evaluateSimulation(filename, scenario, numImages) {
     };
   });
 
-  let score = 85;
-  let summary = `The report "${filename}" has been evaluated. The textual data is cohesive, the research outline is correct, and all images are verified as authentic field evidence.`;
-  let dataAssessment = "The reported experimental values conform to reference specifications. The charts correctly correspond to the text logs.";
-  let remarks = "Excellent documentation. The student demonstrates a strong understanding of experimental validation methodologies.";
+  const hasAI = imagesAssessment.some(img => img.isAI);
+  const hasHousehold = imagesAssessment.some(img => img.isHousehold);
 
-  if (effectiveScenario === 'ai') {
+  let imageScore = 0;
+  if (!hasAI && !hasHousehold) {
+    // If not using AI and not household images, give 30 to 50 marks
+    imageScore = 30 + Math.min(20, numImages * 10);
+  }
+
+  // Calculate text score out of 50 marks (always between 30 and 50 marks)
+  const aiToolKeywords = ['chatgpt', 'gemini', 'copilot', 'openai', 'anthropic', 'claude', 'llm', 'ai platform', 'ai tool', 'ai-generated', 'synthetic text'];
+  const usesAiTools = text && aiToolKeywords.some(kw => text.toLowerCase().includes(kw));
+  const belongsToDomain = !text || text.toLowerCase().includes('methodology') || text.toLowerCase().includes('results') || text.toLowerCase().includes('experiment');
+
+  let textScore = 40; // Default text score out of 50
+  if (text) {
+    const baseTextScore = 10 + Math.min(40, text.split(' ').length / 10);
+    textScore = 30 + (baseTextScore - 10) * 0.5;
+    textScore = Math.max(30, Math.min(50, textScore));
+  }
+
+  let score = 0;
+  let summary = '';
+  let dataAssessment = '';
+  let remarks = '';
+
+  if (hasAI || hasHousehold) {
     score = 0;
-    summary = `CRITICAL FAILURE: The report "${filename}" has been graded 0.0 marks. Image 1 was flagged as an AI-generated image. Academic submissions require authentic photographs or custom diagrams rather than synthetic illustrations.`;
-    dataAssessment = "Submission compliance checks failed: AI synthetic imagery detected in report diagrams. Grading aborted.";
-    remarks = "Resubmission required with authentic physical photographs. The student must redo the experiment documentation without generative tools.";
-  } else if (effectiveScenario === 'household') {
-    score = 0;
-    summary = `CRITICAL FAILURE: The report "${filename}" has been graded 0.0 marks. Image 1 was flagged as a household/family image. Academic report guidelines mandate professional field data images rather than private domestic photographs.`;
-    dataAssessment = "Submission compliance checks failed: Casual/family portraiture found in place of technical charts. Grading aborted.";
-    remarks = "Resubmission required. Student must replace personal snapshots with appropriate experiment diagrams or charts.";
+    if (hasAI && hasHousehold) {
+      summary = `CRITICAL FAILURE — 0/100: Both AI-generated images and household/personal photographs were detected. FAIL.`;
+      dataAssessment = `Dual violations triggered: Generative AI image detection and household imagery found. Score set to zero (FAIL).`;
+      remarks = `Resubmission required. AI-generated images and private household photos must be replaced with authentic experiment data.`;
+    } else if (hasAI) {
+      summary = `CRITICAL FAILURE — 0/100: An AI-generated image was detected. Academic guidelines strictly prohibit synthetic, generative visual submissions. FAIL.`;
+      dataAssessment = `Generative AI image detection triggered. Score set to zero (FAIL).`;
+      remarks = `Resubmission required. Student must submit authentic experiment images. Generative AI tools are strictly prohibited.`;
+    } else {
+      summary = `CRITICAL FAILURE — 0/100: A household/personal photograph was found instead of professional field-data charts. FAIL.`;
+      dataAssessment = `Household imagery found in place of research charts. Score set to zero (FAIL).`;
+      remarks = `Resubmission required. Student must replace private/household photos with authentic technical diagrams or charts.`;
+    }
+  } else {
+    score = Math.round(imageScore + textScore);
+    // Grace band: scores between 55-59 are bumped to 60 (PASS)
+    if (score >= 55 && score <= 59) {
+      score = 60;
+    }
+    const gradeLabel = score >= 60 ? "PASS" : "FAIL";
+    summary = `Report evaluation complete. Score breakdown: Images portion = ${imageScore}/50 marks, Text portion = ${textScore}/50 marks. Total score: ${score}/100 — ${gradeLabel}.`;
+    dataAssessment = `Verified Authentic: No AI-generated or household images detected. Text structure matches domain criteria.`;
+    if (score >= 60) {
+      remarks = `Approved submission. The report satisfies key scientific parameters with solid vocabulary density and structural coherence. Keep up the good work.`;
+    } else {
+      if (usesAiTools && belongsToDomain) {
+        remarks = `Submission failed. AI tools/platforms usage was detected in the text body. While the content is relevant to the domain (giving ${textScore}/50 for text), the total grade is ${score}/100 (FAIL).`;
+      } else {
+        remarks = `Submission failed. The academic structure or vocabulary density does not meet the pass threshold of 60 marks. Resubmission required.`;
+      }
+    }
   }
 
   return {
@@ -262,7 +311,7 @@ export async function evaluateReport({
     const comparison = {};
     const models = ['gemini', 'chatgpt', 'claude', 'blackbox'];
     for (const m of models) {
-      comparison[m] = await evaluateSimulation(filename, activeScenario, images.length);
+      comparison[m] = await evaluateSimulation(filename, activeScenario, images.length, text);
       comparison[m].summary = `(Simulation Fallback) ${comparison[m].summary}`;
     }
     return {
@@ -282,16 +331,16 @@ export async function evaluateReport({
       if (engine === 'gemini') {
         return await evaluateWithGemini(text, images, activeKey);
       }
-      const simResult = await evaluateSimulation(filename, activeScenario, images.length);
+      const simResult = await evaluateSimulation(filename, activeScenario, images.length, text);
       simResult.summary = `(Client-side direct call fallback) ${simResult.summary}`;
       return simResult;
     } catch (err) {
       console.error("Client-side API call failed, falling back to simulation: ", err);
-      const simResult = await evaluateSimulation(filename, activeScenario, images.length);
+      const simResult = await evaluateSimulation(filename, activeScenario, images.length, text);
       simResult.summary = `(API Error Fallback) ${simResult.summary} [Error details: ${err.message}]`;
       return simResult;
     }
   } else {
-    return await evaluateSimulation(filename, activeScenario, images.length);
+    return await evaluateSimulation(filename, activeScenario, images.length, text);
   }
 }
