@@ -40,7 +40,11 @@ CRITICAL RULES FOR GRADING:
    For any of the above, you MUST set: "isAI": true, "status": "flagged_ai", and the final "score": 0.
 
 2. Household / Family / Personal Photos — INSTANT FAIL (score = 0):
-   If any image is a personal/household photo — faces in casual environments, selfies, family gatherings, home settings (kitchens, bedrooms, living rooms, gardens), domestic pets (dogs/cats), group photos, holiday pictures — instead of authentic scientific/project data, you MUST set: "isHousehold": true, "status": "flagged_household", and the final "score": 0.
+   Only flag images that are CLEARLY personal/domestic with NO academic context:
+   - Selfies taken at home, personal family gatherings, pets at home, holiday snapshots.
+   - DO NOT flag field research photos, stakeholder interviews, community site visits, outdoor academic surveys, or any photos taken for legitimate research purposes — even if they show real people.
+   - Field interview photos, GPS-tagged site visit photos, stakeholder documentation photos = VALID academic evidence.
+   If an image is a genuine personal/domestic photo (selfie at home, family party, pet at home), set: "isHousehold": true, "status": "flagged_household", and "score": 0.
 
 3. AI-generated Text — ALLOWED, do NOT penalise:
    The use of AI-generated text (ChatGPT, Gemini, Claude, Copilot, etc.) for writing the report text is FULLY ALLOWED and must NOT be penalised. Grade purely on data quality, structure, and academic clarity.
@@ -151,11 +155,13 @@ function autoDetectScenario(text, filename) {
     'photoshop ai', 'generative fill', 'adobe ai',
   ];
   
-  // Keywords indicating Household/Family images
+  // Keywords indicating Household/Family images — only very specific personal/domestic photo terms.
+  // Generic words like 'family', 'household', 'kitchen' also appear in legitimate academic filenames
+  // (e.g. "household_waste_report.pdf") so they are NOT included here.
   const householdKeywords = [
-    'family', 'selfie', 'household', 'my home', 'my house', 'kitchen', 'bedroom', 
-    'living room', 'mother', 'father', 'sister', 'brother', 'family member',
-    'my dog', 'my cat', 'pet photo', 'domestic scene', 'flagged_household'
+    'selfie-photo', 'family-photo', 'family_photo',
+    'household-selfie', 'personal-selfie',
+    'flagged_household'
   ];
 
   if (aiKeywords.some(keyword => filenameLower.includes(keyword))) {
@@ -216,13 +222,14 @@ async function evaluateSimulation(filename, scenario, numImages, text = '') {
   const textFlagsAI = hasAiTool || hasAiImageTerm;
 
   const householdTerms = [
-    "selfie", "family photo", "family picture", "family image",
-    "my dog", "my cat", "my pet", "pet photo", "pet picture",
-    "photo of my", "picture of my", "image of my",
-    "household photo", "household picture", "personal photo", "personal picture",
-    "my house", "my home", "my room", "my kitchen", "my bedroom",
-    "holiday photo", "vacation photo", "trip photo",
+    // Only flag explicit personal/domestic photo mentions — NOT academic terms like "household waste"
+    "selfie", "took a selfie",
+    "family photo", "family picture", "family selfie",
+    "my dog", "my cat", "my pet",
     "photo of my family", "picture of my family",
+    "photo taken at my home", "picture taken at my home",
+    "photo in my bedroom", "photo in my kitchen",
+    "personal selfie", "household selfie",
   ];
   const textFlagsHousehold = householdTerms.some(k => textLower.includes(k));
 
@@ -285,12 +292,12 @@ async function evaluateSimulation(filename, scenario, numImages, text = '') {
       remarks = `Resubmission required. Student must replace private/household photos with authentic technical diagrams or charts.`;
     }
   } else {
-    // Overall score out of 100 — no 50/50 split
-    // Base score from text length/density (maps to ~40–70)
+    // Overall score out of 100 — valid reports always score 65–90 (clear PASS)
     const wordCount = text ? text.split(/\s+/).length : 0;
-    const baseScore = 40 + Math.min(30, wordCount / 20);
-    // Image bonus (up to 20 extra points)
-    const imageBonus = numImages > 0 ? Math.min(20, numImages * 8) : 5;
+    // Base: 65–80 from text length (even short reports pass)
+    const baseScore = 65 + Math.min(15, wordCount / 60);
+    // Image bonus: up to 15 extra points
+    const imageBonus = numImages > 0 ? Math.min(15, numImages * 5) : 3;
     score = Math.round(Math.min(100, baseScore + imageBonus));
 
     // Grace band: 55–59 → 60 (PASS)

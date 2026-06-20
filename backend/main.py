@@ -32,7 +32,11 @@ CRITICAL RULES FOR GRADING:
    For any of the above, you MUST set: "isAI": true, "status": "flagged_ai", and the final "score": 0.
 
 2. Household / Family / Personal Photos — INSTANT FAIL (score = 0):
-   If any image is a personal/household photo — faces in casual environments, selfies, family gatherings, home settings (kitchens, bedrooms, living rooms, gardens), domestic pets (dogs/cats), group photos, holiday pictures — instead of authentic scientific/project data, you MUST set: "isHousehold": true, "status": "flagged_household", and the final "score": 0.
+   Only flag images that are CLEARLY personal/domestic with NO academic context:
+   - Selfies at home, personal family gatherings at home, pets at home, holiday snapshots.
+   - DO NOT flag field research photos, stakeholder interviews, community site visits, outdoor academic surveys, or photos taken for legitimate research purposes — even if they show real people.
+   - Field interview photos, GPS-tagged research photos, stakeholder documentation = VALID academic evidence.
+   If an image is clearly a personal/domestic photo (selfie, family party, pet indoors), set: "isHousehold": true, "status": "flagged_household", and the final "score": 0.
 
 3. AI-generated Text — ALLOWED, do NOT penalise:
    The use of AI-generated text (ChatGPT, Gemini, Claude, Copilot, etc.) for writing the report text is FULLY ALLOWED and must NOT be penalised. Grade purely on data quality, structure, and academic clarity.
@@ -445,13 +449,14 @@ def run_single_engine(engine: str, req: EvaluationRequest) -> dict:
     text_flags_ai = has_ai_tool or has_ai_image_term
 
     household_terms = [
-        "selfie", "family photo", "family picture", "family image",
-        "my dog", "my cat", "my pet", "pet photo", "pet picture",
-        "photo of my", "picture of my", "image of my",
-        "household photo", "household picture", "personal photo", "personal picture",
-        "my house", "my home", "my room", "my kitchen", "my bedroom",
-        "holiday photo", "vacation photo", "trip photo",
+        # Only flag explicit personal/domestic photo mentions — NOT academic terms like "household waste"
+        "selfie", "took a selfie",
+        "family photo", "family picture", "family selfie",
+        "my dog", "my cat", "my pet",
         "photo of my family", "picture of my family",
+        "photo taken at my home", "picture taken at my home",
+        "photo in my bedroom", "photo in my kitchen",
+        "personal selfie", "household selfie",
     ]
     text_flags_household = any(k in text_lower for k in household_terms)
 

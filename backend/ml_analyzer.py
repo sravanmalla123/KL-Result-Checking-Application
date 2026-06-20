@@ -287,13 +287,14 @@ def evaluate_report_ml(filename: str, text: str, images: list, simulation_scenar
     text_flags_ai = has_ai_tool or has_ai_image_term
 
     household_terms = [
-        "selfie", "family photo", "family picture", "family image",
-        "my dog", "my cat", "my pet", "pet photo", "pet picture",
-        "photo of my", "picture of my", "image of my",
-        "household photo", "household picture", "personal photo", "personal picture",
-        "my house", "my home", "my room", "my kitchen", "my bedroom",
-        "holiday photo", "vacation photo", "trip photo",
+        # Only flag explicit personal/domestic photo mentions — NOT academic terms like "household waste"
+        "selfie", "took a selfie",
+        "family photo", "family picture", "family selfie",
+        "my dog", "my cat", "my pet",
         "photo of my family", "picture of my family",
+        "photo taken at my home", "picture taken at my home",
+        "photo in my bedroom", "photo in my kitchen",
+        "personal selfie", "household selfie",
     ]
     text_flags_household = any(k in text_lower for k in household_terms)
 
@@ -307,8 +308,10 @@ def evaluate_report_ml(filename: str, text: str, images: list, simulation_scenar
     detected_scenario = None
     filename_lower = filename.lower()
     
-    ai_keywords = ['ai-generated', 'synthetic image', 'midjourney', 'dall-e', 'stable-diffusion', 'copilot image', 'ai-scenario', 'flagged_ai']
-    household_keywords = ['family', 'selfie', 'household', 'kitchen', 'bedroom', 'living room', 'my dog', 'my cat', 'flagged_household']
+    # Only very specific filenames trigger household — broad words like 'family'/'household'
+    # appear in legitimate academic report filenames (e.g. "household_waste_study.pdf")
+    ai_keywords = ['ai-generated', 'synthetic-image', 'midjourney', 'dall-e', 'stable-diffusion', 'ai-scenario', 'flagged_ai']
+    household_keywords = ['selfie-photo', 'family-photo', 'family_photo', 'household-selfie', 'flagged_household']
     
     if any(k in filename_lower for k in ai_keywords):
         detected_scenario = "ai"
@@ -408,12 +411,16 @@ def evaluate_report_ml(filename: str, text: str, images: list, simulation_scenar
             data_assessment = f"[{engine_label} Compliance Alert] Household imagery found in place of research charts. Score set to zero (FAIL)."
             remarks = "Resubmission required. Student must replace private/household photos with authentic technical diagrams or charts relevant to the study."
     else:
-        # Overall score out of 100 — no 50/50 split
-        # Base: NLP text quality contributes 0–60 points
-        raw_text = 10.0 + (30.0 * text_analysis["structure_score"]) + (30.0 * min(text_analysis["academic_density"] * 3.0, 1.0))
-        raw_text = max(10.0, min(70.0, raw_text))
+        # Overall score out of 100 — no 50/50 split.
+        # Valid reports always start from a strong base (60–75) so authentic work passes.
+        # Text quality lifts the score; image quality adds a bonus.
+        struct = text_analysis["structure_score"]
+        density = min(text_analysis["academic_density"] * 5.0, 1.0)
+        # Base: 62 – 77  (ensures even minimal valid text scores pass)
+        raw_text = 62.0 + (10.0 * struct) + (8.0 * density)
+        raw_text = max(62.0, min(77.0, raw_text))
 
-        # Image quality contributes 0–30 bonus points
+        # Image quality contributes up to 23 bonus points
         if len(images) > 0:
             edge_densities = []
             for idx, img_b64 in enumerate(images):
@@ -424,10 +431,10 @@ def evaluate_report_ml(filename: str, text: str, images: list, simulation_scenar
                 except:
                     edge_densities.append(15.0)
             avg_edge_density = sum(edge_densities) / len(edge_densities)
-            # Map edge density (5–25) → 10–30 bonus
-            image_bonus = 10.0 + max(0.0, min(20.0, avg_edge_density - 5.0))
+            # Map edge density (5–25) → 8–23 bonus
+            image_bonus = 8.0 + max(0.0, min(15.0, avg_edge_density - 5.0))
         else:
-            image_bonus = 10.0  # No images: small base bonus
+            image_bonus = 8.0  # No images: small base bonus
 
         score = round(raw_text + image_bonus)
         score = max(0, min(100, score))
@@ -436,7 +443,7 @@ def evaluate_report_ml(filename: str, text: str, images: list, simulation_scenar
         if 55 <= score <= 59:
             score = 60
 
-        ai_tool_keywords = ['chatgpt', 'gemini', 'copilot', 'openai', 'anthropic', 'claude', 'llm', 'ai platform', 'ai tool', 'ai-generated', 'synthetic text']
+        ai_tool_keywords = ['chatgpt', 'gemini', 'copilot', 'openai', 'anthropic', 'claude', 'llm', 'ai platform', 'ai tool']
         uses_ai_tools = any(kw in text.lower() for kw in ai_tool_keywords)
         belongs_to_domain = text_analysis["structure_score"] >= 0.6 or text_analysis["academic_density"] >= 0.15
 
@@ -459,10 +466,7 @@ def evaluate_report_ml(filename: str, text: str, images: list, simulation_scenar
         if score >= 60:
             remarks = f"Approved submission. The report satisfies key scientific parameters with solid vocabulary density and structural coherence. Keep up the good work."
         else:
-            if uses_ai_tools and belongs_to_domain:
-                remarks = f"Submission failed. The total grade is {score}/100 (FAIL). Improve academic structure and data depth to reach the 60-mark pass threshold."
-            else:
-                remarks = f"Submission failed. The academic structure or vocabulary density does not meet the pass threshold of 60 marks. Resubmission required."
+            remarks = f"Submission failed. The academic structure or vocabulary density does not meet the pass threshold of 60 marks. Resubmission required."
         
     return {
         "score": score,
