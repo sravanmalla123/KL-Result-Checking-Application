@@ -422,20 +422,29 @@ ${(evaluationResult.images || []).map((img, idx) => `
   const avgScore = totalReports > 0 
     ? (history.reduce((acc, curr) => {
         if (curr.evaluation.comparison) {
-          const geminiScore = curr.evaluation.comparison.gemini?.score;
-          if (geminiScore !== undefined) return acc + geminiScore;
-          const scores = Object.values(curr.evaluation.comparison).map(res => res.score ?? 0);
-          return acc + (scores.length > 0 ? Math.max(...scores) : 0);
+          const comparisonList = Object.values(curr.evaluation.comparison);
+          const anyPass = comparisonList.some(res => (res.score ?? 0) >= 60);
+          if (anyPass) {
+            const passingScores = comparisonList.filter(res => (res.score ?? 0) >= 60).map(res => res.score);
+            const geminiRes = curr.evaluation.comparison.gemini;
+            const score = (geminiRes && geminiRes.score >= 60) ? geminiRes.score : Math.max(...passingScores);
+            return acc + score;
+          } else {
+            const geminiScore = curr.evaluation.comparison.gemini?.score;
+            if (geminiScore !== undefined) return acc + geminiScore;
+            const scores = comparisonList.map(res => res.score ?? 0);
+            return acc + (scores.length > 0 ? Math.max(...scores) : 0);
+          }
         }
         return acc + (curr.evaluation.score ?? 0);
       }, 0) / totalReports).toFixed(0)
     : '0';
   const totalFlagged = history.filter(item => {
     if (item.evaluation.comparison) {
-      const geminiScore = item.evaluation.comparison.gemini?.score;
-      if (geminiScore !== undefined) return geminiScore === 0;
-      const scores = Object.values(item.evaluation.comparison).map(res => res.score ?? 0);
-      return scores.length > 0 && Math.max(...scores) === 0;
+      const comparisonList = Object.values(item.evaluation.comparison);
+      const anyPass = comparisonList.some(res => (res.score ?? 0) >= 60);
+      const anyFlagged = comparisonList.some(res => res.score === 0);
+      return !anyPass && anyFlagged;
     }
     return item.evaluation.score === 0;
   }).length;
@@ -1198,18 +1207,18 @@ ${(evaluationResult.images || []).map((img, idx) => `
                   let hasViolation = itemScore === 0;
 
                   if (item.evaluation.comparison) {
+                    const comparisonList = Object.values(item.evaluation.comparison);
                     const geminiRes = item.evaluation.comparison.gemini;
-                    if (geminiRes) {
-                      itemScore = geminiRes.score;
-                      isPass = itemScore >= 60;
-                      hasViolation = itemScore === 0;
+                    const anyPass = comparisonList.some(res => (res.score ?? 0) >= 60);
+                    isPass = anyPass;
+                    
+                    if (isPass) {
+                      const passingScores = comparisonList.filter(res => (res.score ?? 0) >= 60).map(res => res.score);
+                      itemScore = (geminiRes && geminiRes.score >= 60) ? geminiRes.score : Math.max(...passingScores);
                     } else {
-                      const comparisonList = Object.values(item.evaluation.comparison);
-                      const scores = comparisonList.map(res => res.score ?? 0);
-                      itemScore = scores.length > 0 ? Math.max(...scores) : 0;
-                      isPass = comparisonList.some(res => (res.score ?? 0) >= 60);
-                      hasViolation = !isPass && itemScore === 0;
+                      itemScore = geminiRes ? geminiRes.score : (comparisonList.length > 0 ? Math.max(...comparisonList.map(res => res.score ?? 0)) : 0);
                     }
+                    hasViolation = !isPass && (comparisonList.some(res => res.score === 0));
                   }
                   
                   return (
