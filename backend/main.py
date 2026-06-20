@@ -33,6 +33,8 @@ CRITICAL RULES FOR GRADING:
    If there are NO AI-generated images and NO household/family images, grade the report on a scale of 1 to 100 based on text quality, data precision, academic worth, and image relevance.
    A score of 60 or above is a PASS. A score below 60 is a FAIL.
    GRACE BAND RULE: If you would award a score between 55 and 59 (inclusive), you MUST round it up to 60 so the student achieves a PASS. Scores of 54 and below remain unchanged (FAIL).
+5. Image references in text check:
+   If the student report text explicitly states or implies that they generated their diagrams/images using AI tools (e.g. Midjourney, DALL-E) or that they used household/personal photographs (e.g. photos of family, pets, rooms) instead of authentic scientific/experimental data, you MUST flag those images as "flagged_ai" or "flagged_household" respectively and set the final report "score" to 0.
 
 Your response MUST be a single, valid JSON object following this exact schema:
 {
@@ -316,52 +318,72 @@ def run_single_engine(engine: str, req: EvaluationRequest) -> dict:
     Evaluates the report with a single specified engine (calling API or falling back to simulation).
     """
     engine = engine.lower()
+    res = {}
     if engine == "gemini":
         gemini_key = req.geminiApiKey or req.apiKey
         if gemini_key and gemini_key.strip():
             try:
-                return evaluate_with_gemini_api(req.text, req.images, gemini_key)
+                res = evaluate_with_gemini_api(req.text, req.images, gemini_key)
             except Exception as e:
                 local_res = evaluate_report_ml(req.filename, req.text, req.images, req.simulationScenario, engine)
                 local_res["summary"] = f"(Gemini API Error - Local Simulation Fallback) {local_res['summary']} [Error details: {str(e)}]"
-                return local_res
+                res = local_res
         else:
-            return evaluate_report_ml(req.filename, req.text, req.images, req.simulationScenario, engine)
+            res = evaluate_report_ml(req.filename, req.text, req.images, req.simulationScenario, engine)
             
     elif engine == "chatgpt":
         if req.openaiApiKey and req.openaiApiKey.strip():
             try:
-                return evaluate_with_openai_api(req.text, req.images, req.openaiApiKey)
+                res = evaluate_with_openai_api(req.text, req.images, req.openaiApiKey)
             except Exception as e:
                 local_res = evaluate_report_ml(req.filename, req.text, req.images, req.simulationScenario, engine)
                 local_res["summary"] = f"(ChatGPT API Error - Local Simulation Fallback) {local_res['summary']} [Error details: {str(e)}]"
-                return local_res
+                res = local_res
         else:
-            return evaluate_report_ml(req.filename, req.text, req.images, req.simulationScenario, engine)
+            res = evaluate_report_ml(req.filename, req.text, req.images, req.simulationScenario, engine)
             
     elif engine == "claude":
         if req.anthropicApiKey and req.anthropicApiKey.strip():
             try:
-                return evaluate_with_claude_api(req.text, req.images, req.anthropicApiKey)
+                res = evaluate_with_claude_api(req.text, req.images, req.anthropicApiKey)
             except Exception as e:
                 local_res = evaluate_report_ml(req.filename, req.text, req.images, req.simulationScenario, engine)
                 local_res["summary"] = f"(Claude API Error - Local Simulation Fallback) {local_res['summary']} [Error details: {str(e)}]"
-                return local_res
+                res = local_res
         else:
-            return evaluate_report_ml(req.filename, req.text, req.images, req.simulationScenario, engine)
+            res = evaluate_report_ml(req.filename, req.text, req.images, req.simulationScenario, engine)
             
     elif engine == "blackbox":
         if req.blackboxApiKey and req.blackboxApiKey.strip():
             try:
-                return evaluate_with_blackbox_api(req.text, req.images, req.blackboxApiKey)
+                res = evaluate_with_blackbox_api(req.text, req.images, req.blackboxApiKey)
             except Exception as e:
                 local_res = evaluate_report_ml(req.filename, req.text, req.images, req.simulationScenario, engine)
                 local_res["summary"] = f"(Blackbox API Error - Local Simulation Fallback) {local_res['summary']} [Error details: {str(e)}]"
-                return local_res
+                res = local_res
         else:
-            return evaluate_report_ml(req.filename, req.text, req.images, req.simulationScenario, engine)
-            
-    return evaluate_report_ml(req.filename, req.text, req.images, req.simulationScenario, "gemini")
+            res = evaluate_report_ml(req.filename, req.text, req.images, req.simulationScenario, engine)
+    else:
+        res = evaluate_report_ml(req.filename, req.text, req.images, req.simulationScenario, "gemini")
+
+    # STRICT ENFORCEMENT: If any image is flagged as AI or household, score MUST be 0 marks!
+    has_ai = any(img.get("isAI") or img.get("status") == "flagged_ai" for img in res.get("images", []))
+    has_household = any(img.get("isHousehold") or img.get("status") == "flagged_household" for img in res.get("images", []))
+    
+    if has_ai or has_household:
+        res["score"] = 0
+        violations = []
+        if has_ai:
+            violations.append("AI-generated images")
+        if has_household:
+            violations.append("household/personal photographs")
+        violation_desc = " and ".join(violations)
+        
+        res["summary"] = f"CRITICAL FAILURE — 0/100: The report '{req.filename}' was graded 0 marks. {violation_desc.capitalize()} detected. FAIL."
+        res["dataAssessment"] = f"[Compliance Alert] Violation triggered: {violation_desc} found. Score set to zero (FAIL)."
+        res["remarks"] = f"Resubmission required. Student must replace the flagged images with authentic technical diagrams or charts. {'Generative AI tools are strictly prohibited.' if has_ai else ''}"
+        
+    return res
 
 @app.post("/api/grade")
 async def grade_report(req: EvaluationRequest):
