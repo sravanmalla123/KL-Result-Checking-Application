@@ -12,7 +12,9 @@ tests = [
     ('household', 0.0, None),
     ('valid', None, None),
     ('valid', 0.0, "Abstract: We generated the diagram using midjourney."),
-    ('valid', 0.0, "Abstract: This is a photo of my family in the backyard.")
+    ('valid', 0.0, "Abstract: This is a photo of my family in the backyard."),
+    ('valid', 0.0, "Abstract: The diagram was edited in photoshop."),
+    ('valid', 0.0, "Abstract: This is an edited photo.")
 ]
 
 print("=== VeriReport AI Detection Tests ===\n")
