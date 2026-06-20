@@ -101,32 +101,34 @@ def analyze_image_ml(img: Image.Image) -> dict:
     # A natural photo has soft edges, high color entropy, and low background ratio.
     # An AI image has high color entropy, low noise (smoothness), and highly saturated gradients.
     
+    # Count unique colors in the image to distinguish simple flat digital diagrams from complex AI/edited images
+    colors_list = img.getcolors(maxcolors=20000)
+    unique_colors = len(colors_list) if colors_list is not None else 20000
+
     is_diagram = (solid_bg_ratio > 0.15 and color_entropy < 4.2) or (color_entropy < 3.2)
+    
+    # If the image looks like a diagram but has too many unique colors combined with smooth gradients/synthetic textures,
+    # it is flagged as an AI-generated diagram.
+    is_ai_diagram = False
+    if is_diagram and unique_colors > 1500 and color_entropy > 2.2:
+        if avg_brightness_local_var < 0.004 or (avg_brightness_local_var < 0.006 and avg_saturation > 0.2):
+            is_ai_diagram = True
+
     is_photo = False
     is_ai = False
     is_household = False
     
     # Let's assess features
-    if is_diagram:
+    if is_diagram and not is_ai_diagram:
         status = "valid"
-        assessment_details.append(f"Validated Diagram: Image has low color complexity (entropy: {color_entropy:.2f}) or solid background (ratio: {solid_bg_ratio:.2f}), matching academic diagram profiles.")
+        assessment_details.append(f"Validated Diagram: Image has low color complexity (entropy: {color_entropy:.2f}, unique colors: {unique_colors}) or solid background (ratio: {solid_bg_ratio:.2f}), matching academic diagram profiles.")
     else:
         is_photo = True
-        # If it is a photo, let's distinguish between natural household photo and AI-generated image
-        # AI images typically have very high color entropy, extremely low noise (smoothness), and high saturation std-dev.
-        # Thresholds:
-        # - color_entropy > 4.2: high complexity
-        # - avg_brightness_local_var < 0.003: very smooth (typical of AI generation/airbrushing)
-        # - avg_saturation > 0.4: highly saturated colors
-        
-        # We also check for simulation hints in the image properties (like file name or layout index)
-        # to ensure it behaves deterministically if the user uploaded simulation files.
-        # But we base it primarily on image statistics!
-        
-        if avg_brightness_local_var < 0.003 or (avg_brightness_local_var < 0.005 and avg_saturation > 0.25):
+        # If it is a photo or a flagged AI diagram, let's distinguish between natural household photo and AI-generated image
+        if is_ai_diagram or avg_brightness_local_var < 0.003 or (avg_brightness_local_var < 0.005 and avg_saturation > 0.25):
             is_ai = True
             status = "flagged_ai"
-            assessment_details.append(f"Flagged AI: Detected synthetic color gradients and airbrushed highlights with extremely low noise patterns (entropy: {color_entropy:.2f}, noise index: {avg_brightness_local_var:.5f}).")
+            assessment_details.append(f"Flagged AI: Detected synthetic color gradients and airbrushed highlights with extremely low noise patterns (entropy: {color_entropy:.2f}, noise index: {avg_brightness_local_var:.5f}, unique colors: {unique_colors}).")
         else:
             is_household = True
             status = "flagged_household"
