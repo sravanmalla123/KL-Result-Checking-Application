@@ -422,9 +422,14 @@ ${(evaluationResult.images || []).map((img, idx) => `
   const avgScore = totalReports > 0 
     ? (history.reduce((acc, curr) => {
         if (curr.evaluation.comparison) {
+          const comparisonList = Object.values(curr.evaluation.comparison);
+          const hasAnyViolation = comparisonList.some(res => res.score === 0);
+          if (hasAnyViolation) return acc; // Score is 0
+          
           const geminiScore = curr.evaluation.comparison.gemini?.score;
           if (geminiScore !== undefined) return acc + geminiScore;
-          const scores = Object.values(curr.evaluation.comparison).map(res => res.score ?? 0);
+          
+          const scores = comparisonList.map(res => res.score ?? 0);
           return acc + (scores.length > 0 ? Math.max(...scores) : 0);
         }
         return acc + (curr.evaluation.score ?? 0);
@@ -432,10 +437,8 @@ ${(evaluationResult.images || []).map((img, idx) => `
     : '0';
   const totalFlagged = history.filter(item => {
     if (item.evaluation.comparison) {
-      const geminiScore = item.evaluation.comparison.gemini?.score;
-      if (geminiScore !== undefined) return geminiScore === 0;
-      const scores = Object.values(item.evaluation.comparison).map(res => res.score ?? 0);
-      return scores.length > 0 && Math.max(...scores) === 0;
+      const comparisonList = Object.values(item.evaluation.comparison);
+      return comparisonList.some(res => res.score === 0);
     }
     return item.evaluation.score === 0;
   }).length;
@@ -1201,16 +1204,23 @@ ${(evaluationResult.images || []).map((img, idx) => `
                     const comparisonList = Object.values(item.evaluation.comparison);
                     const geminiRes = item.evaluation.comparison.gemini;
                     
-                    // Show PASS if Gemini passes or if any other API key passes
-                    isPass = comparisonList.some(res => (res.score ?? 0) >= 60);
+                    // If any model flags a violation (score 0), then the report has a violation and MUST fail
+                    const hasAnyViolation = comparisonList.some(res => res.score === 0);
                     
-                    if (geminiRes) {
-                      itemScore = geminiRes.score;
-                      hasViolation = geminiRes.score === 0;
+                    if (hasAnyViolation) {
+                      itemScore = 0;
+                      isPass = false;
+                      hasViolation = true;
                     } else {
-                      const scores = comparisonList.map(res => res.score ?? 0);
-                      itemScore = scores.length > 0 ? Math.max(...scores) : 0;
-                      hasViolation = !isPass && itemScore === 0;
+                      // Otherwise, show PASS if Gemini passes or if any other comparison model passes
+                      isPass = comparisonList.some(res => (res.score ?? 0) >= 60);
+                      if (geminiRes) {
+                        itemScore = geminiRes.score;
+                      } else {
+                        const scores = comparisonList.map(res => res.score ?? 0);
+                        itemScore = scores.length > 0 ? Math.max(...scores) : 0;
+                      }
+                      hasViolation = false;
                     }
                   }
                   

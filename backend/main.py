@@ -313,6 +313,36 @@ def evaluate_with_blackbox_api(text: str, images: List[str], api_key: str) -> di
             detail=f"Failed to parse Blackbox response: {str(e)}. Raw: {response.text}"
         )
 
+def detect_image_violation(img: dict) -> tuple:
+    status_lower = str(img.get("status", "")).lower()
+    assessment_lower = str(img.get("assessment", "")).lower()
+    
+    is_ai = (
+        img.get("isAI") is True or 
+        str(img.get("isAI")).lower() in ("true", "yes") or 
+        "ai" in status_lower or 
+        "synthetic" in status_lower or 
+        "edit" in status_lower or 
+        "manipulate" in status_lower or 
+        "flagged ai" in assessment_lower or 
+        "ai-generated" in assessment_lower or 
+        "synthetic" in assessment_lower
+    )
+    
+    is_household = (
+        img.get("isHousehold") is True or 
+        str(img.get("isHousehold")).lower() in ("true", "yes") or 
+        "household" in status_lower or 
+        "family" in status_lower or 
+        "personal" in status_lower or 
+        "photo" in status_lower or 
+        "flagged household" in assessment_lower or 
+        "household photo" in assessment_lower or 
+        "family photo" in assessment_lower or 
+        "selfie" in assessment_lower
+    )
+    return is_ai, is_household
+
 def run_single_engine(engine: str, req: EvaluationRequest) -> dict:
     """
     Evaluates the report with a single specified engine (calling API or falling back to simulation).
@@ -402,9 +432,20 @@ def run_single_engine(engine: str, req: EvaluationRequest) -> dict:
             res["images"][0]["assessment"] = f"[{engine.upper()} Forced] Flagged Household: household photo simulation active."
 
     # STRICT ENFORCEMENT: If any image is flagged as AI or household, score MUST be 0 marks!
-    has_ai = any(img.get("isAI") or img.get("status") == "flagged_ai" for img in res.get("images", []))
-    has_household = any(img.get("isHousehold") or img.get("status") == "flagged_household" for img in res.get("images", []))
+    has_ai = False
+    has_household = False
     
+    for img in res.get("images", []):
+        img_ai, img_household = detect_image_violation(img)
+        if img_ai:
+            img["isAI"] = True
+            img["status"] = "flagged_ai"
+            has_ai = True
+        if img_household:
+            img["isHousehold"] = True
+            img["status"] = "flagged_household"
+            has_household = True
+            
     if has_ai or has_household:
         res["score"] = 0
         violations = []

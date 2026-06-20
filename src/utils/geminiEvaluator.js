@@ -281,13 +281,67 @@ async function evaluateSimulation(filename, scenario, numImages, text = '') {
   };
 }
 
+function detectImageViolation(img) {
+  if (!img) return [false, false];
+  const status_lower = String(img.status || "").toLowerCase();
+  const assessment_lower = String(img.assessment || "").toLowerCase();
+  
+  const is_ai = (
+    img.isAI === true || 
+    String(img.isAI).toLowerCase() === "true" || 
+    String(img.isAI).toLowerCase() === "yes" || 
+    status_lower.includes("ai") || 
+    status_lower.includes("synthetic") || 
+    status_lower.includes("edit") || 
+    status_lower.includes("manipulate") || 
+    assessment_lower.includes("flagged ai") || 
+    assessment_lower.includes("ai-generated") || 
+    assessment_lower.includes("synthetic") ||
+    assessment_lower.includes("edited") ||
+    assessment_lower.includes("manipulated")
+  );
+  
+  const is_household = (
+    img.isHousehold === true || 
+    String(img.isHousehold).toLowerCase() === "true" || 
+    String(img.isHousehold).toLowerCase() === "yes" || 
+    status_lower.includes("household") || 
+    status_lower.includes("family") || 
+    status_lower.includes("personal") || 
+    status_lower.includes("photo") || 
+    assessment_lower.includes("flagged household") || 
+    assessment_lower.includes("household photo") || 
+    assessment_lower.includes("family photo") || 
+    assessment_lower.includes("selfie")
+  );
+  
+  return [is_ai, is_household];
+}
+
 function enforceZeroScoreOnViolations(result) {
   if (!result) return result;
   
   const applyEnforcement = (data) => {
     if (!data) return;
-    const hasAI = data.images?.some(img => img.isAI || img.status === 'flagged_ai');
-    const hasHousehold = data.images?.some(img => img.isHousehold || img.status === 'flagged_household');
+    
+    let hasAI = false;
+    let hasHousehold = false;
+    
+    if (data.images && Array.isArray(data.images)) {
+      data.images.forEach(img => {
+        const [isAi, isHousehold] = detectImageViolation(img);
+        if (isAi) {
+          img.isAI = true;
+          img.status = 'flagged_ai';
+          hasAI = true;
+        }
+        if (isHousehold) {
+          img.isHousehold = true;
+          img.status = 'flagged_household';
+          hasHousehold = true;
+        }
+      });
+    }
     
     if (hasAI || hasHousehold) {
       data.score = 0;
