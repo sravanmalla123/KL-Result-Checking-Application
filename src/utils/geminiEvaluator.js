@@ -264,24 +264,6 @@ async function evaluateSimulation(filename, scenario, numImages, text = '') {
   const hasAI = imagesAssessment.some(img => img.isAI);
   const hasHousehold = imagesAssessment.some(img => img.isHousehold);
 
-  let imageScore = 0;
-  if (!hasAI && !hasHousehold) {
-    // If not using AI and not household images, give 30 to 50 marks
-    imageScore = 30 + Math.min(20, numImages * 10);
-  }
-
-  // Calculate text score out of 50 marks (always between 30 and 50 marks)
-  const aiToolKeywords = ['chatgpt', 'gemini', 'copilot', 'openai', 'anthropic', 'claude', 'llm', 'ai platform', 'ai tool', 'ai-generated', 'synthetic text'];
-  const usesAiTools = text && aiToolKeywords.some(kw => text.toLowerCase().includes(kw));
-  const belongsToDomain = !text || text.toLowerCase().includes('methodology') || text.toLowerCase().includes('results') || text.toLowerCase().includes('experiment');
-
-  let textScore = 40; // Default text score out of 50
-  if (text) {
-    const baseTextScore = 10 + Math.min(40, text.split(' ').length / 10);
-    textScore = 30 + (baseTextScore - 10) * 0.5;
-    textScore = Math.max(30, Math.min(50, textScore));
-  }
-
   let score = 0;
   let summary = '';
   let dataAssessment = '';
@@ -303,22 +285,25 @@ async function evaluateSimulation(filename, scenario, numImages, text = '') {
       remarks = `Resubmission required. Student must replace private/household photos with authentic technical diagrams or charts.`;
     }
   } else {
-    score = Math.round(imageScore + textScore);
-    // Grace band: scores between 55-59 are bumped to 60 (PASS)
+    // Overall score out of 100 — no 50/50 split
+    // Base score from text length/density (maps to ~40–70)
+    const wordCount = text ? text.split(/\s+/).length : 0;
+    const baseScore = 40 + Math.min(30, wordCount / 20);
+    // Image bonus (up to 20 extra points)
+    const imageBonus = numImages > 0 ? Math.min(20, numImages * 8) : 5;
+    score = Math.round(Math.min(100, baseScore + imageBonus));
+
+    // Grace band: 55–59 → 60 (PASS)
     if (score >= 55 && score <= 59) {
       score = 60;
     }
     const gradeLabel = score >= 60 ? "PASS" : "FAIL";
-    summary = `Report evaluation complete. Score breakdown: Images portion = ${imageScore}/50 marks, Text portion = ${textScore}/50 marks. Total score: ${score}/100 — ${gradeLabel}.`;
+    summary = `Report evaluation complete. Overall score: ${score}/100 — ${gradeLabel}.`;
     dataAssessment = `Verified Authentic: No AI-generated or household images detected. Text structure matches domain criteria.`;
     if (score >= 60) {
       remarks = `Approved submission. The report satisfies key scientific parameters with solid vocabulary density and structural coherence. Keep up the good work.`;
     } else {
-      if (usesAiTools && belongsToDomain) {
-        remarks = `Submission failed. AI tools/platforms usage was detected in the text body. While the content is relevant to the domain (giving ${textScore}/50 for text), the total grade is ${score}/100 (FAIL).`;
-      } else {
-        remarks = `Submission failed. The academic structure or vocabulary density does not meet the pass threshold of 60 marks. Resubmission required.`;
-      }
+      remarks = `Submission failed. The academic structure or vocabulary density does not meet the pass threshold of 60 marks. Resubmission required.`;
     }
   }
 
